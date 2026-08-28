@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% import "_macros.html" as macros %}
+{% block title %}Registration Complete{% endblock %}
+{% block content %}
+  <div class="banner banner-success">
+    <span class="icon">✅</span>
+    <h2>Household Registered</h2>
+    <p>Household ID: <strong>{{ household.household_code }}</strong></p>
+  </div>
+
+  {% if household.assigned_timeslot_label %}
+    <div class="card">
+      <h2>📅 Assigned Pickup Time</h2>
+      <p style="font-size:1.3rem; font-weight:700;">{{ household.assigned_timeslot_label }}</p>
+      {% if household.email %}
+        <p class="hint">{% if email_sent %}A confirmation email with this information was sent to {{ household.email }}.{% else %}We couldn't send a confirmation email — please write down the household code and pickup time above.{% endif %}</p>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <div class="card">
+    <h2>{{ household.primary_name }}'s Household</h2>
+    <p>
+      <strong>Household Size:</strong> {{ members|length }} {{ 'person' if members|length == 1 else 'people' }}
+      &nbsp; {{ macros.status_badge(members|length) }}
+    </p>
+    <table>
+      <tr><th>Name</th><th>Relationship</th><th>Member ID</th></tr>
+      {% for m in members %}
+        <tr>
+          <td>{{ m.name }}</td>
+          <td>{{ m.relationship }}</td>
+          <td>{{ m.member_code }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+    {% if household.designate_first_name or household.designate_last_name %}
+      <p style="margin-top:1rem;">
+        <strong>Authorized Pickup Designate:</strong>
+        {{ household.designate_first_name }} {{ household.designate_last_name }}
+        {% if household.designate_relationship %}({{ household.designate_relationship }}){% endif %}
+      </p>
+    {% endif %}
+    {% if household.needs_diapers or household.needs_formula %}
+      <p style="margin-top:1rem;">
+        <strong>Needs:</strong>
+        {% if household.needs_diapers %}🧷 Diapers{% endif %}
+        {% if household.needs_diapers and household.needs_formula %}, {% endif %}
+        {% if household.needs_formula %}🍼 Formula{% endif %}
+      </p>
+    {% endif %}
+    <p style="margin-top:1rem;"><strong>Government ID Checked:</strong> {{ 'Yes' if household.id_verified else 'No' }}</p>
+  </div>
+
+  <p class="hint">Please keep the Household ID for your records — volunteers can also look you up by name or phone number at check-in.</p>
+
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="window.print()">🖨️ Print This Page</button>
+    <a class="btn btn-primary" href="{{ url_for('public.checkin_confirm', household_id=household.id) }}">✅ Check In This Household Now</a>
+  </div>
+  <a class="btn btn-secondary" href="{{ url_for('public.checkin') }}" style="margin-top:0.5rem;">Done — Back to Check-In</a>
+{% endblock %}

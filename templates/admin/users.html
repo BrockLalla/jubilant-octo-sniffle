@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Admins{% endblock %}
+{% block content %}
+  {% set active = 'users' %}
+  {% include "admin/_nav.html" %}
+  <h1>Admins</h1>
+  <p class="subtitle">Everyone with full access to household and visit records.</p>
+
+  <div class="table-scroll">
+    <table>
+      <tr><th>Email</th><th>Username</th><th>Added</th></tr>
+      {% for a in admins %}
+        <tr>
+          <td>{{ a.email or '' }}</td>
+          <td>{{ a.username }}</td>
+          <td>{{ a.created_at[:10] }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>My Account</h2>
+    <p class="hint">
+      {% if current_admin.email %}
+        Password reset links go to this address if you ever forget your password.
+      {% else %}
+        You don't have an email on file yet — without one, "Forgot your password?" won't be able to
+        find your account. Add one now so you're not locked out later.
+      {% endif %}
+    </p>
+    <form method="post">
+      <input type="hidden" name="action" value="update_email">
+      <label for="my_email">Email</label>
+      <input type="email" id="my_email" name="my_email" value="{{ current_admin.email or '' }}" required>
+      <button type="submit" class="btn btn-secondary" style="margin-top:1rem;">Save My Email</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Invite a New Admin</h2>
+    <p class="hint">
+      They'll get an email with a one-time link to set their own password and create their account.
+      The link expires in {{ invite_valid_hours }} hours.
+    </p>
+    <form method="post">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required autofocus>
+      <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Send Invite</button>
+    </form>
+  </div>
+{% endblock %}

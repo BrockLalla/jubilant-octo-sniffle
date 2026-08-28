@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}The Neighbourhood Pantry Tracker — Server Running{% endblock %}
+{% block content %}
+  <div class="banner banner-success">
+    <span class="icon">🟢</span>
+    <h2>The Neighbourhood Pantry Tracker Is Running</h2>
+    <p>Keep this app open while the pantry is in use.</p>
+  </div>
+
+  <a class="card card-link" href="{{ url_for('public.checkin') }}">
+    <h2>✅ Volunteer Check-In</h2>
+  </a>
+  <a class="card card-link" href="{{ url_for('public.register') }}">
+    <h2>📝 Register a New Household</h2>
+  </a>
+  <a class="card card-link" href="{{ url_for('admin.dashboard') }}">
+    <h2>🔒 Admin Dashboard</h2>
+  </a>
+
+  <div class="card">
+    <h2>Set Up Volunteer Devices</h2>
+    <p>On each volunteer's tablet or phone (connected to the same WiFi), open this address in Safari or Chrome:</p>
+    {% if local_hostname %}
+      <p style="font-size:1.4rem; font-weight:700; text-align:center; padding:1rem; background:#eef1f5; border-radius:0.5rem;">
+        http://{{ local_hostname }}:{{ port }}/checkin
+      </p>
+      <p class="hint">This address keeps working automatically even if this Mac's network address changes later — nothing to configure, no router settings needed.</p>
+      <p class="hint">If a device can't reach that address (rare, mainly older Android tablets), use this instead: <strong>http://{{ lan_ip }}:{{ port }}/checkin</strong></p>
+    {% else %}
+      <p style="font-size:1.4rem; font-weight:700; text-align:center; padding:1rem; background:#eef1f5; border-radius:0.5rem;">
+        http://{{ lan_ip }}:{{ port }}/checkin
+      </p>
+    {% endif %}
+    <p class="hint">On an iPhone/iPad in Safari, tap the Share icon, then "Add to Home Screen," so it opens like a regular app icon — no browser address bar to deal with.</p>
+  </div>
+
+  <div class="card">
+    <p class="hint">
+      To stop the server, click the basket icon
+      (<img src="{{ url_for('static', filename='images/menubar_icon.png') }}" alt="basket icon" style="height:1.1em; vertical-align:-0.15em;">)
+      in the menu bar at the top of the screen and choose "Quit Pantry Tracker."
+    </p>
+  </div>
+{% endblock %}

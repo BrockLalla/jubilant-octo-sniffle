@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Stale Households{% endblock %}
+{% block content %}
+  {% set active = 'stale' %}
+  {% include "admin/_nav.html" %}
+  <h1>Stale Households</h1>
+  <p class="subtitle">Households with no pickup (or never picked up since registering) in over 6 months.</p>
+
+  <div class="table-scroll">
+    <table>
+      <tr><th>Household Code</th><th>Primary Name</th><th>Last Visit</th><th>Registered</th><th></th></tr>
+      {% for h in rows %}
+        <tr>
+          <td>{{ h.household_code }}</td>
+          <td>{{ h.primary_name }}</td>
+          <td>{{ h.last_visit_display or 'Never visited' }}</td>
+          <td>{{ h.created_at[:10] }}</td>
+          <td style="white-space:nowrap;">
+            <a class="btn btn-small btn-secondary" href="{{ url_for('admin.household_detail', household_id=h.id) }}">View / Edit</a>
+            <form method="post" action="{{ url_for('admin.household_detail', household_id=h.id) }}" style="display:inline"
+                  onsubmit="return confirm('Remove all personal info for {{ h.primary_name }}\'s household ({{ h.household_code }})? Visit history is kept for grant reporting. This cannot be undone.');">
+              <input type="hidden" name="action" value="anonymize_household">
+              <input type="hidden" name="next" value="{{ url_for('admin.stale_households') }}">
+              <button type="submit" class="btn btn-small btn-danger">🕵️ Remove Info</button>
+            </form>
+            <form method="post" action="{{ url_for('admin.household_detail', household_id=h.id) }}" style="display:inline"
+                  onsubmit="return confirm('Permanently delete {{ h.primary_name }}\'s household ({{ h.household_code }}), all its members, and its visit history? This cannot be undone.');">
+              <input type="hidden" name="action" value="delete_household">
+              <input type="hidden" name="next" value="{{ url_for('admin.stale_households') }}">
+              <button type="submit" class="btn btn-small btn-danger">🗑️ Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% if not rows %}
+    <p class="muted">No stale households right now.</p>
+  {% endif %}
+{% endblock %}

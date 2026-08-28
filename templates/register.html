@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% import "_macros.html" as macros %}
+{% block title %}Register a Household{% endblock %}
+{% block content %}
+  <h1>Register a New Household</h1>
+  <p class="subtitle">This information is only visible to pantry administrators.</p>
+  <a class="btn btn-secondary" href="{{ url_for('public.checkin') }}" style="margin-bottom:1rem;">← Back to Check-In</a>
+
+  <form method="post" id="register-form">
+    <h2>Primary Applicant</h2>
+    <label for="primary_first_name">First Name</label>
+    <input type="text" id="primary_first_name" name="primary_first_name" value="{{ form.get('primary_first_name', '') }}" required>
+
+    <label for="primary_last_name">Last Name</label>
+    <input type="text" id="primary_last_name" name="primary_last_name" value="{{ form.get('primary_last_name', '') }}" required>
+
+    <label>Date of Birth</label>
+    {{ macros.dob_select('primary_dob', month=form.get('primary_dob_month'), day=form.get('primary_dob_day'), year=form.get('primary_dob_year'), current_year=current_year) }}
+
+    <label for="phone">Phone Number</label>
+    <input type="tel" id="phone" name="phone" value="{{ form.get('phone', '') }}" placeholder="(optional, helps volunteers find you at check-in)">
+
+    <label for="email">Email Address</label>
+    <input type="email" id="email" name="email" value="{{ form.get('email', '') }}" placeholder="(optional) we'll email your household code and pickup time">
+
+    <label class="checkbox-label">
+      <input type="checkbox" name="id_verified" value="1" {% if form.get('id_verified') %}checked{% endif %}>
+      Government ID Checked
+    </label>
+    <label class="checkbox-label">
+      <input type="checkbox" name="needs_diapers" value="1" {% if form.get('needs_diapers') %}checked{% endif %}>
+      🧷 Diapers Needed
+    </label>
+    <label class="checkbox-label">
+      <input type="checkbox" name="needs_formula" value="1" {% if form.get('needs_formula') %}checked{% endif %}>
+      🍼 Formula Needed
+    </label>
+
+    {% if timeslots %}
+      <h2>Preferred Pickup Times</h2>
+      <p class="hint">Pick up to 3 weekly time slots that work for you. We'll assign whichever is least busy.</p>
+
+      <label for="pref1_timeslot_id">1st Choice</label>
+      <select id="pref1_timeslot_id" name="pref1_timeslot_id">
+        <option value="">-- Select a time --</option>
+        {% for t in timeslots %}
+          <option value="{{ t.id }}" {% if form.get('pref1_timeslot_id')|string == t.id|string %}selected{% endif %}>{{ t.label }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="pref2_timeslot_id">2nd Choice</label>
+      <select id="pref2_timeslot_id" name="pref2_timeslot_id">
+        <option value="">-- Select a time --</option>
+        {% for t in timeslots %}
+          <option value="{{ t.id }}" {% if form.get('pref2_timeslot_id')|string == t.id|string %}selected{% endif %}>{{ t.label }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="pref3_timeslot_id">3rd Choice</label>
+      <select id="pref3_timeslot_id" name="pref3_timeslot_id">
+        <option value="">-- Select a time --</option>
+        {% for t in timeslots %}
+          <option value="{{ t.id }}" {% if form.get('pref3_timeslot_id')|string == t.id|string %}selected{% endif %}>{{ t.label }}</option>
+        {% endfor %}
+      </select>
+    {% endif %}
+
+    <details class="section-details" open>
+      <summary>Other Household Members</summary>
+      <p class="hint">Add everyone else living in the household. Household size is counted automatically from these entries.</p>
+
+      <div id="member-rows"></div>
+
+      <button type="button" class="btn btn-secondary" id="add-member-btn">➕ Add Another Household Member</button>
+    </details>
+
+    <details class="section-details">
+      <summary>Authorized Pickup Designate (optional)</summary>
+      <p class="hint">Someone other than a household member who's allowed to pick up food on this household's behalf — a caregiver, neighbor, adult child, etc. Volunteers will see this name at check-in.</p>
+
+      <label for="designate_first_name">First Name</label>
+      <input type="text" id="designate_first_name" name="designate_first_name" value="{{ form.get('designate_first_name', '') }}">
+
+      <label for="designate_last_name">Last Name</label>
+      <input type="text" id="designate_last_name" name="designate_last_name" value="{{ form.get('designate_last_name', '') }}">
+
+      <label for="designate_relationship">Relationship to Household</label>
+      <input type="text" id="designate_relationship" name="designate_relationship" value="{{ form.get('designate_relationship', '') }}" placeholder="e.g. Caregiver, Neighbor, Adult Child">
+    </details>
+
+    {% if show_duplicate_confirm %}
+      <div class="card" style="border-color:#e8c477; background:#fdf1d9;">
+        <label class="checkbox-label">
+          <input type="checkbox" name="confirm_not_duplicate" value="1">
+          I've checked and this is a different person, not already registered under another household.
+        </label>
+      </div>
+    {% endif %}
+
+    <button type="submit" class="btn btn-primary" style="margin-top: 2rem;">Submit Registration</button>
+  </form>
+
+  <template id="member-row-template">
+    <div class="member-row">
+      <button type="button" class="btn btn-small btn-danger remove-row">Remove</button>
+      <label>First Name</label>
+      <input type="text" name="member_first_name[]">
+      <label>Last Name</label>
+      <input type="text" name="member_last_name[]">
+      <label>Date of Birth</label>
+      {{ macros.dob_select('member_dob', suffix='[]', current_year=current_year) }}
+      <label>Relationship to Primary Applicant</label>
+      <select name="member_relationship[]">
+        <option value="Spouse">Spouse</option>
+        <option value="Child">Child</option>
+        <option value="Parent">Parent</option>
+        <option value="Other">Other</option>
+      </select>
+      <label class="checkbox-label">
+        <input type="checkbox" class="member-id-verified-checkbox">
+        <input type="hidden" name="member_id_verified[]" value="0">
+        Government ID Checked
+      </label>
+    </div>
+  </template>
+
+  <script src="{{ url_for('static', filename='register.js') }}"></script>
+{% endblock %}

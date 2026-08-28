@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Admin Setup{% endblock %}
+{% block content %}
+  <h1>Create the Admin Account</h1>
+  <p class="subtitle">This is a one-time setup. This account will have full access to household and visit records.</p>
+
+  <form method="post">
+    <label for="username">Username</label>
+    <input type="text" id="username" name="username" required autofocus>
+
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" required minlength="8">
+    <p class="hint">At least 8 characters.</p>
+
+    <label for="confirm_password">Confirm Password</label>
+    <input type="password" id="confirm_password" name="confirm_password" required minlength="8">
+
+    <button type="submit" class="btn btn-primary" style="margin-top:1.5rem;">Create Admin Account</button>
+  </form>
+{% endblock %}

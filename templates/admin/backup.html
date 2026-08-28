@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Backup & Restore{% endblock %}
+{% block content %}
+  {% set active = 'backup' %}
+  {% include "admin/_nav.html" %}
+  <h1>Backup &amp; Restore</h1>
+  <p class="subtitle">Move this pantry's data to another computer, or keep a safety copy.</p>
+
+  <div class="card">
+    <h2>Download a Backup</h2>
+    <p class="hint">
+      Downloads everything — every household, member, and visit — as a single file. To set this
+      app up on another computer (like the church's computer): install the app there first, then
+      come back here, download a backup, and import it there using the form below.
+    </p>
+    <a href="{{ url_for('admin.backup_export') }}" class="btn btn-primary">⬇️ Download Database Backup</a>
+  </div>
+
+  <div class="card" style="border-color:#e8a29c;">
+    <h2>Import a Backup</h2>
+    <p class="hint">
+      Replaces <strong>all</strong> data on this computer with what's in the file you choose. Use
+      this on a newly set-up computer to bring in data from another one. The data currently on
+      this computer is automatically saved first, just in case.
+    </p>
+    <form method="post" action="{{ url_for('admin.backup_import') }}" enctype="multipart/form-data"
+          onsubmit="return confirm('This will replace ALL data on this computer with the uploaded backup. Continue?');">
+      <label for="db_file">Backup File</label>
+      <input type="file" id="db_file" name="db_file" accept=".db" required>
+      <button type="submit" class="btn btn-danger" style="margin-top:1rem;">⬆️ Import &amp; Replace Data</button>
+    </form>
+  </div>
+{% endblock %}

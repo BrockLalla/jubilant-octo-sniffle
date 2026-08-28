@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Admin Login{% endblock %}
+{% block content %}
+  <h1>Admin Login</h1>
+  <p class="subtitle">Restricted to pantry administrators.</p>
+
+  <form method="post">
+    <label for="username">Username or Email</label>
+    <input type="text" id="username" name="username" required autofocus>
+
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" required>
+
+    <button type="submit" class="btn btn-primary" style="margin-top:1.5rem;">Log In</button>
+  </form>
+
+  <p class="hint" style="text-align:center; margin-top:1rem;">
+    <a href="{{ url_for('admin.forgot_password') }}">Forgot your password?</a>
+  </p>
+{% endblock %}

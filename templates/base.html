@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=3">
+  <title>{% block title %}The Neighbourhood Pantry Tracker{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="top">
+    <a href="{{ url_for('public.index') }}" class="brand">
+      <img src="{{ url_for('static', filename='images/church-logo.png') }}" alt="The Neighbourhood Church" class="brand-logo">
+      <h1>The Neighbourhood Pantry Tracker</h1>
+    </a>
+  </header>
+  <div class="page">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category if category in ('error', 'warning') else 'success' }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

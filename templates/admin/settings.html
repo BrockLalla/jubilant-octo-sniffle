@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Email Settings{% endblock %}
+{% block content %}
+  {% set active = 'settings' %}
+  {% include "admin/_nav.html" %}
+  <h1>Email Settings</h1>
+  <p class="subtitle">Used to send households their household code and assigned pickup time at registration.</p>
+
+  <div class="card">
+    <h2>SMTP Credentials</h2>
+    <p class="hint">
+      Using Gmail: create or use a Gmail account for the pantry, turn on 2-Step Verification,
+      then generate an "App Password" at
+      <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">myaccount.google.com/apppasswords</a>
+      and paste that 16-character password below (not your normal Gmail password).
+    </p>
+    <form method="post">
+      <input type="hidden" name="action" value="save">
+      <label for="smtp_host">SMTP Server</label>
+      <input type="text" id="smtp_host" name="smtp_host" value="{{ cfg.smtp_host or 'smtp.gmail.com' }}" required>
+
+      <label for="smtp_port">Port</label>
+      <input type="text" id="smtp_port" name="smtp_port" value="{{ cfg.smtp_port or '587' }}" required>
+
+      <label for="smtp_username">Email Address (sends from this address)</label>
+      <input type="email" id="smtp_username" name="smtp_username" value="{{ cfg.smtp_username or '' }}" required>
+
+      <label for="smtp_password">App Password</label>
+      <input type="password" id="smtp_password" name="smtp_password" placeholder="{{ 'Leave blank to keep the saved password' if cfg.smtp_username else 'Enter app password' }}">
+
+      <label for="from_name">Display Name</label>
+      <input type="text" id="from_name" name="from_name" value="{{ cfg.from_name or 'Community Pantry' }}" placeholder="e.g. The Way Church Pantry">
+
+      <label for="admin_notify_email">Admin Notification Email</label>
+      <input type="email" id="admin_notify_email" name="admin_notify_email" value="{{ cfg.admin_notify_email or '' }}" placeholder="Where to send alerts about inactive households (defaults to the address above)">
+
+      <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Save Settings</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Registration Email</h2>
+    <p class="hint">
+      This is what a household receives when they register with an email address. Write it however
+      the church would like it to sound — use these placeholders anywhere in the subject or message
+      and they'll be filled in automatically for each household: <strong>$primary_name</strong>,
+      <strong>$household_code</strong>, <strong>$timeslot</strong>.
+    </p>
+    <form method="post">
+      <label for="email_subject">Subject</label>
+      <input type="text" id="email_subject" name="email_subject" value="{{ cfg.email_subject }}" required>
+
+      <label for="email_body_editor">Message</label>
+      <div class="rte-toolbar">
+        <button type="button" class="rte-btn" data-cmd="bold" title="Bold"><strong>B</strong></button>
+        <button type="button" class="rte-btn" data-cmd="italic" title="Italic"><em>I</em></button>
+        <button type="button" class="rte-btn" data-cmd="insertUnorderedList" title="Bulleted list">☰ List</button>
+        <button type="button" class="rte-btn" data-cmd="insertOrderedList" title="Numbered list">☰ 1-2-3</button>
+      </div>
+      <div id="email_body_editor" class="rte-editor" contenteditable="true">{{ cfg.email_body|safe }}</div>
+      <input type="hidden" id="email_body" name="email_body">
+
+      <button type="submit" name="action" value="save_template" class="btn btn-primary" style="margin-top:1rem;">Save Registration Email</button>
+
+      <h3 style="margin-top:1.5rem;">Send Yourself a Sample</h3>
+      <p class="hint">
+        Sends whatever's above (even if you haven't saved yet) filled in with sample data, so you can
+        see exactly what a household would get.
+      </p>
+      <label for="template_test_address">Send sample to</label>
+      <input type="email" id="template_test_address" name="template_test_address" placeholder="you@example.com">
+      <button type="submit" name="action" value="test_template" class="btn btn-secondary" style="margin-top:1rem;">Send Sample Registration Email</button>
+    </form>
+  </div>
+
+  <script src="{{ url_for('static', filename='email_editor.js') }}"></script>
+{% endblock %}

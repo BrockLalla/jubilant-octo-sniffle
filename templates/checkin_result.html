@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% import "_macros.html" as macros %}
+{% block title %}Check-In{% endblock %}
+{% block content %}
+  <h1>{{ household.primary_name }}'s Household</h1>
+  <p class="muted">
+    {{ household.household_code }} &middot; {{ members|length }} {{ 'person' if members|length == 1 else 'people' }}
+    &nbsp; {{ macros.status_badge(members|length) }}
+  </p>
+
+  <div class="card" style="text-align:center; background:#eef1f5; border-color:#0d1c2a;">
+    <p class="hint" style="margin:0;">Assigned Pickup Time</p>
+    <p style="margin:0.25rem 0 0; font-size:1.4rem; font-weight:700;">
+      {{ household.assigned_timeslot_label or 'Not yet assigned' }}
+    </p>
+  </div>
+
+  {% if success %}
+    <div class="banner banner-success">
+      <span class="icon">✅</span>
+      <h2>Food Picked Up</h2>
+      <p>{{ household.primary_name }}'s household is checked in for today.</p>
+    </div>
+    {% if household.needs_diapers or household.needs_formula %}
+      <div class="card needs-callout">
+        <h2>🧺 Don't Forget:</h2>
+        <ul>
+          {% if household.needs_diapers %}<li>🧷 Diapers</li>{% endif %}
+          {% if household.needs_formula %}<li>🍼 Formula</li>{% endif %}
+        </ul>
+      </div>
+    {% endif %}
+    <a class="btn btn-primary" href="{{ url_for('public.checkin') }}">Check In Another Household</a>
+
+  {% elif blocked %}
+    <div class="banner banner-blocked">
+      <span class="icon">⛔</span>
+      <h2>Already Picked Up This Week</h2>
+      <p>{{ household.primary_name }}'s household already picked up food on <strong>{{ existing_visit_display }}</strong>.</p>
+    </div>
+    <a class="btn btn-secondary" href="{{ url_for('public.checkin') }}">Back to Search</a>
+
+  {% else %}
+    {% if household.needs_diapers or household.needs_formula %}
+      <div class="card needs-callout">
+        <h2>🧺 Also Provide:</h2>
+        <ul>
+          {% if household.needs_diapers %}<li>🧷 Diapers</li>{% endif %}
+          {% if household.needs_formula %}<li>🍼 Formula</li>{% endif %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <div class="card">
+      <h2>Who Can Pick Up</h2>
+      <table>
+        <tr><th>Name</th><th>Relationship</th><th>ID Verified</th></tr>
+        {% for m in members %}
+          <tr>
+            <td>{{ m.name }}</td>
+            <td>{{ m.relationship }}</td>
+            <td>
+              {% if m.id_verified %}
+                <span class="id-status-row"><span class="id-status-icon">✅</span></span>
+              {% else %}
+                <label class="id-status-row" style="color:#b3261e; cursor:pointer;">
+                  <span class="id-status-icon"><input type="checkbox" name="verified_member_ids[]" value="{{ m.id }}" form="checkin-form"></span>
+                  Verify Now
+                </label>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        {% if household.designate_first_name or household.designate_last_name %}
+          <tr>
+            <td>{{ household.designate_first_name }} {{ household.designate_last_name }}</td>
+            <td>{{ household.designate_relationship or 'Authorized Designate' }}</td>
+            <td class="muted">—</td>
+          </tr>
+        {% endif %}
+      </table>
+      <p class="hint">Confirm the person in front of you is one of the names above before checking in. If their ID hasn't been verified yet and you've checked it now, tick "Verify Now" next to their name.</p>
+    </div>
+
+    <form method="post" action="{{ url_for('public.checkin_do', household_id=household.id) }}" id="checkin-form">
+      <label for="checked_in_by">Your Name (volunteer, optional)</label>
+      <input type="text" id="checked_in_by" name="checked_in_by" placeholder="e.g. Jane">
+      <button type="submit" class="btn btn-primary" style="margin-top:1rem;">✅ Confirm Pickup for Today</button>
+    </form>
+    <a class="btn btn-secondary" href="{{ url_for('public.checkin') }}">Cancel</a>
+  {% endif %}
+{% endblock %}

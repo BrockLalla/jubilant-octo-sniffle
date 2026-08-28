@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% import "_macros.html" as macros %}
+{% block title %}{{ household.primary_name }}{% endblock %}
+{% block content %}
+  {% set active = 'households' %}
+  {% include "admin/_nav.html" %}
+
+  <h1>{{ household.primary_name }}</h1>
+  <p class="muted">
+    {{ household.household_code }} &middot; Registered {{ household.created_at[:10] }}
+    &nbsp; {{ macros.status_badge(members|length) }}
+  </p>
+
+  <div class="card">
+    <h2>Household Info</h2>
+    <form method="post">
+      <input type="hidden" name="action" value="update_household">
+      <label>First Name</label>
+      <input type="text" name="primary_first_name" value="{{ household.primary_first_name }}" required>
+      <label>Last Name</label>
+      <input type="text" name="primary_last_name" value="{{ household.primary_last_name }}" required>
+      <label>Phone</label>
+      <input type="tel" name="phone" value="{{ household.phone or '' }}">
+      <label>Email</label>
+      <input type="email" name="email" value="{{ household.email or '' }}">
+
+      <label class="checkbox-label">
+        <input type="checkbox" name="id_verified" value="1" {% if household.id_verified %}checked{% endif %}>
+        Government ID Checked
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" name="needs_diapers" value="1" {% if household.needs_diapers %}checked{% endif %}>
+        🧷 Diapers Needed
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" name="needs_formula" value="1" {% if household.needs_formula %}checked{% endif %}>
+        🍼 Formula Needed
+      </label>
+
+      <label>Assigned Timeslot</label>
+      <select name="assigned_timeslot_id">
+        <option value="">-- Not assigned --</option>
+        {% for t in timeslots %}
+          <option value="{{ t.id }}" {% if household.assigned_timeslot_id == t.id %}selected{% endif %}>
+            {{ t.label }}{% if not t.active %} (inactive){% endif %}
+          </option>
+        {% endfor %}
+      </select>
+      {% if household.pref1_label or household.pref2_label or household.pref3_label %}
+        <p class="hint">
+          Ranked preferences at registration:
+          {{ household.pref1_label or '—' }}, {{ household.pref2_label or '—' }}, {{ household.pref3_label or '—' }}
+        </p>
+      {% endif %}
+
+      <h3>Authorized Pickup Designate</h3>
+      <p class="hint">Someone other than a household member who's allowed to pick up on this household's behalf.</p>
+      <label>First Name</label>
+      <input type="text" name="designate_first_name" value="{{ household.designate_first_name or '' }}">
+      <label>Last Name</label>
+      <input type="text" name="designate_last_name" value="{{ household.designate_last_name or '' }}">
+      <label>Relationship to Household</label>
+      <input type="text" name="designate_relationship" value="{{ household.designate_relationship or '' }}" placeholder="e.g. Caregiver, Neighbor, Adult Child">
+
+      <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Save Household Info</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Members ({{ members|length }})</h2>
+    <div class="table-scroll">
+    <table class="members-table">
+      <tr><th>First Name</th><th>Last Name</th><th>Date of Birth</th><th>Relationship</th><th>ID Verified</th><th></th></tr>
+      {% for m in members %}
+        {% set dob_parts = m.date_of_birth.split('-') if m.date_of_birth else [] %}
+        <tr>
+          <td><input type="text" name="first_name" value="{{ m.first_name }}" form="member-form-{{ m.id }}"></td>
+          <td><input type="text" name="last_name" value="{{ m.last_name }}" form="member-form-{{ m.id }}"></td>
+          <td>
+            {{ macros.dob_select(
+              'date_of_birth',
+              month=(dob_parts[1]|int|string if dob_parts|length == 3 else None),
+              day=(dob_parts[2]|int|string if dob_parts|length == 3 else None),
+              year=(dob_parts[0] if dob_parts|length == 3 else None),
+              current_year=current_year,
+              form_id='member-form-' ~ m.id
+            ) }}
+          </td>
+          <td><input type="text" name="relationship" value="{{ m.relationship }}" form="member-form-{{ m.id }}"></td>
+          <td>
+            <input type="checkbox" name="id_verified" value="1" form="member-form-{{ m.id }}" {% if m.id_verified %}checked{% endif %}>
+          </td>
+          <td>
+            <form id="member-form-{{ m.id }}" method="post" style="display:inline">
+              <input type="hidden" name="action" value="update_member">
+              <input type="hidden" name="member_id" value="{{ m.id }}">
+              <button type="submit" class="btn btn-small btn-secondary">Save</button>
+            </form>
+            <form method="post" style="display:inline" onsubmit="return confirm('Remove {{ m.name }} from this household?');">
+              <input type="hidden" name="action" value="delete_member">
+              <input type="hidden" name="member_id" value="{{ m.id }}">
+              <button type="submit" class="btn btn-small btn-danger">Remove</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+    </div>
+
+    <h3>Add a Member</h3>
+    <form method="post">
+      <input type="hidden" name="action" value="add_member">
+      <label>First Name</label>
+      <input type="text" name="first_name" required>
+      <label>Last Name</label>
+      <input type="text" name="last_name" required>
+      <label>Date of Birth</label>
+      {{ macros.dob_select('date_of_birth', current_year=current_year) }}
+      <label>Relationship</label>
+      <input type="text" name="relationship" placeholder="e.g. Child">
+      <label class="checkbox-label">
+        <input type="checkbox" name="id_verified" value="1">
+        Government ID Checked
+      </label>
+      <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Add Member</button>
+    </form>
+  </div>
+
+  <div class="card" style="border-color:#e8a29c;">
+    <h2>Danger Zone</h2>
+
+    <h3>Remove Personal Info</h3>
+    <p class="hint">
+      For households that have gone quiet (6+ months): clears {{ household.primary_name }}'s name, phone,
+      email, and designate info, but keeps the household record and its full visit history intact, so past
+      weeks still count correctly in grant reports. Cannot be undone.
+    </p>
+    <form method="post" onsubmit="return confirm('Remove all personal info for {{ household.primary_name }}\'s household ({{ household.household_code }})? Visit history is kept for grant reporting. This cannot be undone.');">
+      <input type="hidden" name="action" value="anonymize_household">
+      <button type="submit" class="btn btn-danger">🕵️ Remove Personal Info (Keep Visit History)</button>
+    </form>
+
+    <h3 style="margin-top:1.5rem;">Delete Everything</h3>
+    <p class="hint">
+      Permanently deletes {{ household.primary_name }}'s household ({{ household.household_code }}),
+      all {{ members|length }} member record{{ '' if members|length == 1 else 's' }}, and their entire visit
+      history. This cannot be undone.
+    </p>
+    <form method="post" onsubmit="return confirm('Permanently delete {{ household.primary_name }}\'s household ({{ household.household_code }}), all its members, and its visit history? This cannot be undone.');">
+      <input type="hidden" name="action" value="delete_household">
+      <button type="submit" class="btn btn-danger">🗑️ Delete This Household Permanently</button>
+    </form>
+  </div>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+  {% set active = 'dashboard' %}
+  {% include "admin/_nav.html" %}
+  <h1>Dashboard</h1>
+
+  <div class="hub-grid">
+    <a class="hub-card" href="{{ url_for('admin.households') }}">
+      <h2>🏠 Households</h2>
+      <p>View, edit, and search all registered households</p>
+    </a>
+    <a class="hub-card" href="{{ url_for('admin.visits') }}">
+      <h2>✅ Visits</h2>
+      <p>Browse the full pickup / check-in log</p>
+    </a>
+    <a class="hub-card" href="{{ url_for('admin.reports') }}">
+      <h2>📊 Reports</h2>
+      <p>Grant statistics and weekly breakdowns</p>
+    </a>
+  </div>
+
+  <form method="get" class="card">
+    <label>Start Date</label>
+    <input type="date" name="start_date" value="{{ start_date }}" min="1900-01-01" max="2099-12-31">
+    <label>End Date</label>
+    <input type="date" name="end_date" value="{{ end_date }}" min="1900-01-01" max="2099-12-31">
+    <div class="btn-row" style="margin-top:1rem;">
+      <button type="submit" class="btn btn-primary">Filter</button>
+      <a class="btn btn-secondary" href="{{ url_for('admin.dashboard') }}">Clear</a>
+    </div>
+  </form>
+
+  <p class="muted">Showing: {{ stats.period_label }}</p>
+
+  <div class="stats-grid">
+    <a class="stat-tile" href="{{ url_for('admin.visits') }}">
+      <div class="value">{{ stats.households_served|commas }}</div>
+      <div class="label">Households Served</div>
+    </a>
+    <a class="stat-tile" href="{{ url_for('admin.visits') }}">
+      <div class="value">{{ stats.individuals_served|commas }}</div>
+      <div class="label">Individuals Served</div>
+    </a>
+    <a class="stat-tile" href="{{ url_for('admin.visits') }}">
+      <div class="value">{{ stats.visits_in_range|commas }}</div>
+      <div class="label">Visits</div>
+    </a>
+    <a class="stat-tile" href="{{ url_for('admin.visits') }}">
+      <div class="value">{{ stats.total_visits_all_time|commas }}</div>
+      <div class="label">Total Visits (All Time)</div>
+    </a>
+    <a class="stat-tile" href="{{ url_for('admin.households') }}">
+      <div class="value">{{ stats.total_households|commas }}</div>
+      <div class="label">Registered Households</div>
+    </a>
+    <a class="stat-tile" href="{{ url_for('admin.households') }}">
+      <div class="value">{{ stats.total_members|commas }}</div>
+      <div class="label">Registered Individuals</div>
+    </a>
+    <a class="stat-tile" href="{{ url_for('admin.households') }}">
+      <div class="value">{{ stats.avg_household_size|commas }}</div>
+      <div class="label">Avg. Household Size</div>
+    </a>
+  </div>
+
+  <div class="card">
+    <h2>Visits Per Week</h2>
+    {% if chart.has_data %}
+      <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" class="trend-chart" role="img"
+           aria-label="Weekly visit counts over the last {{ chart.weeks|length }} weeks">
+        {% for g in chart.gridlines %}
+          <line x1="{{ chart.plot_left }}" y1="{{ g.y }}" x2="{{ chart.plot_right }}" y2="{{ g.y }}" class="chart-gridline" />
+          <text x="{{ chart.plot_left - 8 }}" y="{{ g.y + 4 }}" class="chart-axis-label" text-anchor="end">{{ g.label }}</text>
+        {% endfor %}
+        <path d="{{ chart.area_path }}" class="chart-area" />
+        <polyline points="{{ chart.points_str }}" class="chart-line" />
+        {% for w in chart.weeks %}
+          {% if w.show_label %}
+            <text x="{{ w.x }}" y="{{ chart.height - 6 }}" class="chart-axis-label" text-anchor="middle">{{ w.date_display }}</text>
+          {% endif %}
+          <circle cx="{{ w.x }}" cy="{{ w.y }}" r="10" class="chart-hit-target">
+            <title>{{ w.date_display }}: {{ w.count|commas }} visit{{ '' if w.count == 1 else 's' }}</title>
+          </circle>
+        {% endfor %}
+        <circle cx="{{ chart.last_point.x }}" cy="{{ chart.last_point.y }}" r="5" class="chart-end-dot" />
+      </svg>
+    {% else %}
+      <p class="muted">No visits recorded yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Export for Grant Applications</h2>
+    <div class="btn-row">
+      <a class="btn btn-secondary" href="{{ url_for('admin.export_households') }}">⬇️ Download Households CSV</a>
+      <a class="btn btn-secondary" href="{{ url_for('admin.export_visits') }}">⬇️ Download Visits CSV</a>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% import "_macros.html" as macros %}
+{% block title %}Volunteer Check-In{% endblock %}
+{% block content %}
+  <h1>Volunteer Check-In</h1>
+  <p class="subtitle">Search by household code.</p>
+
+  <form method="get" class="search-form">
+    <input type="text" name="q" value="{{ query }}" placeholder="e.g. 1234" autofocus inputmode="numeric">
+    <button type="submit" class="btn btn-primary" style="width:auto;">Search</button>
+  </form>
+
+  <a class="btn btn-secondary" href="{{ url_for('public.register') }}" style="margin-top:0.75rem;">📝 New Household? Register Them Here</a>
+
+  {% if query and not results %}
+    <div class="card">
+      <p>No households found matching "<strong>{{ query }}</strong>".</p>
+      <p class="hint">Double check the spelling, or the household may need to <a href="{{ url_for('public.register') }}">register first</a>.</p>
+    </div>
+  {% endif %}
+
+  {% for h in results %}
+    <a class="card card-link" href="{{ url_for('public.checkin_confirm', household_id=h.id) }}">
+      <h2>{{ h.primary_name }} &nbsp;{{ macros.status_badge(h.member_count) }}</h2>
+      <p class="muted">{{ h.household_code }} &middot; {{ h.member_count }} {{ 'person' if h.member_count == 1 else 'people' }}{% if h.phone %} &middot; {{ h.phone }}{% endif %}</p>
+    </a>
+  {% endfor %}
+{% endblock %}

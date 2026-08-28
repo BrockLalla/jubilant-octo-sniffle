@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Grant Report{% endblock %}
+{% block content %}
+  <div class="no-print">
+  {% set active = 'reports' %}
+  {% include "admin/_nav.html" %}
+  </div>
+  <h1>Grant Report</h1>
+  <p class="subtitle">Summary statistics for grant applications.</p>
+
+  <form method="get" class="card no-print">
+    <label>Start Date</label>
+    <input type="date" name="start_date" value="{{ start_date }}" min="1900-01-01" max="2099-12-31">
+    <label>End Date</label>
+    <input type="date" name="end_date" value="{{ end_date }}" min="1900-01-01" max="2099-12-31">
+    <div class="btn-row" style="margin-top:1rem;">
+      <button type="submit" class="btn btn-primary">Filter</button>
+      <a class="btn btn-secondary" href="{{ url_for('admin.reports') }}">Clear</a>
+    </div>
+  </form>
+
+  <div class="no-print">
+    <a class="btn btn-secondary" href="{{ url_for('admin.export_report', start_date=start_date, end_date=end_date) }}">⬇️ Download Report CSV</a>
+    <button type="button" class="btn btn-secondary" onclick="window.print();">🖨️ Print / Save as PDF</button>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-tile">
+      <div class="value">{{ stats.individuals_served|commas }}</div>
+      <div class="label">Unique Individuals Served</div>
+    </div>
+    <div class="stat-tile">
+      <div class="value">{{ stats.total_individuals|commas }}</div>
+      <div class="label">Total Registered</div>
+    </div>
+    <div class="stat-tile">
+      <div class="value">{{ stats.children_0_3|commas }}</div>
+      <div class="label">Children 0-3</div>
+    </div>
+    <div class="stat-tile">
+      <div class="value">{{ stats.children_4_12|commas }}</div>
+      <div class="label">Children 4-12</div>
+    </div>
+    <div class="stat-tile">
+      <div class="value">{{ stats.children_13_18|commas }}</div>
+      <div class="label">Children 13-18</div>
+    </div>
+    <div class="stat-tile">
+      <div class="value">{{ stats.seniors_65plus|commas }}</div>
+      <div class="label">Seniors 65+</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Grant Data by Week</h2>
+    <p class="hint">One row per pickup date that actually occurred. Family/Senior/Child columns count a household once if it had any member in that group that week.</p>
+    <div class="table-scroll">
+      <table class="weekly-table">
+        <thead>
+          <tr>
+            <th>Week</th><th>New</th><th>Attendance</th><th>People Fed</th>
+            <th>Family</th><th>Senior</th><th>Child 0-3</th><th>Child 4-12</th><th>Child 13-18</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for w in weeks %}
+            <tr>
+              <td>{{ w.date_display }}</td>
+              {% if w.closed %}
+                <td colspan="8" class="muted">Closed{% if w.closure_reason %} — {{ w.closure_reason }}{% endif %}</td>
+              {% else %}
+                <td>{{ w.new|commas }}</td>
+                <td>{{ w.attendance|commas }}</td>
+                <td>{{ w.people_fed|commas }}</td>
+                <td>{{ w.family|commas }}</td>
+                <td>{{ w.senior|commas }}</td>
+                <td>{{ w.child_0_3|commas }}</td>
+                <td>{{ w.child_4_12|commas }}</td>
+                <td>{{ w.child_13_18|commas }}</td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+          {% if weeks %}
+            <tr class="weekly-table-totals">
+              <td>TOTAL</td>
+              <td>{{ weeks|sum(attribute='new')|commas }}</td>
+              <td>{{ weeks|sum(attribute='attendance')|commas }}</td>
+              <td>{{ weeks|sum(attribute='people_fed')|commas }}</td>
+              <td>{{ weeks|sum(attribute='family')|commas }}</td>
+              <td>{{ weeks|sum(attribute='senior')|commas }}</td>
+              <td>{{ weeks|sum(attribute='child_0_3')|commas }}</td>
+              <td>{{ weeks|sum(attribute='child_4_12')|commas }}</td>
+              <td>{{ weeks|sum(attribute='child_13_18')|commas }}</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+    {% if not weeks %}
+      <p class="muted">No visits in this range.</p>
+    {% endif %}
+  </div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% import "_macros.html" as macros %}
+{% block title %}Households{% endblock %}
+{% block content %}
+  {% set active = 'households' %}
+  {% include "admin/_nav.html" %}
+  <h1>Households</h1>
+
+  <form method="get" class="search-form">
+    <input type="text" name="q" value="{{ query }}" placeholder="Search by name, phone, or household code">
+    <button type="submit" class="btn btn-primary" style="width:auto;">Search</button>
+  </form>
+
+  <div class="table-scroll">
+    <table>
+      {% set params = {'q': query} %}
+      <tr>
+        {{ macros.sort_th('Household Code', 'code', sort, direction, 'admin.households', params) }}
+        {{ macros.sort_th('Primary Name', 'name', sort, direction, 'admin.households', params) }}
+        {{ macros.sort_th('Phone', 'phone', sort, direction, 'admin.households', params) }}
+        {{ macros.sort_th('Size', 'size', sort, direction, 'admin.households', params) }}
+        {{ macros.sort_th('Status', 'status', sort, direction, 'admin.households', params) }}
+        <th></th>
+      </tr>
+      {% for h in rows %}
+        <tr>
+          <td>{{ h.household_code }}</td>
+          <td>{{ h.primary_name }}</td>
+          <td>{{ h.phone or '' }}</td>
+          <td>{{ h.member_count }}</td>
+          <td>{{ macros.status_badge(h.member_count) }}</td>
+          <td><a class="btn btn-small btn-secondary" href="{{ url_for('admin.household_detail', household_id=h.id) }}">View / Edit</a></td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% if not rows %}
+    <p class="muted">No households found.</p>
+  {% endif %}
+{% endblock %}

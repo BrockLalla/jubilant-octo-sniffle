@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Accept Invite{% endblock %}
+{% block content %}
+  <h1>Create Your Admin Account</h1>
+  <p class="subtitle">Setting up an admin account for <strong>{{ email }}</strong>.</p>
+
+  <form method="post">
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" required minlength="8" autofocus>
+    <p class="hint">At least 8 characters.</p>
+
+    <label for="confirm_password">Confirm Password</label>
+    <input type="password" id="confirm_password" name="confirm_password" required minlength="8">
+
+    <button type="submit" class="btn btn-primary" style="margin-top:1.5rem;">Create Account</button>
+  </form>
+{% endblock %}

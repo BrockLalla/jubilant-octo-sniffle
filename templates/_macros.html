@@ -1,0 +1,41 @@
+{% macro dob_select(prefix, suffix='', month=None, day=None, year=None, current_year=2026, form_id=None) %}
+  {% set months = [
+    ('1', 'January'), ('2', 'February'), ('3', 'March'), ('4', 'April'),
+    ('5', 'May'), ('6', 'June'), ('7', 'July'), ('8', 'August'),
+    ('9', 'September'), ('10', 'October'), ('11', 'November'), ('12', 'December')
+  ] %}
+  <div class="dob-row">
+    <select name="{{ prefix }}_month{{ suffix }}" aria-label="Month of birth" {% if form_id %}form="{{ form_id }}"{% endif %}>
+      <option value="">Month</option>
+      {% for val, label in months %}
+        <option value="{{ val }}" {% if month == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="{{ prefix }}_day{{ suffix }}" aria-label="Day of birth" {% if form_id %}form="{{ form_id }}"{% endif %}>
+      <option value="">Day</option>
+      {% for d in range(1, 32) %}
+        <option value="{{ d }}" {% if day == d|string %}selected{% endif %}>{{ d }}</option>
+      {% endfor %}
+    </select>
+    <select name="{{ prefix }}_year{{ suffix }}" aria-label="Year of birth" {% if form_id %}form="{{ form_id }}"{% endif %}>
+      <option value="">Year</option>
+      {% for y in range(current_year, current_year - 115, -1) %}
+        <option value="{{ y }}" {% if year == y|string %}selected{% endif %}>{{ y }}</option>
+      {% endfor %}
+    </select>
+  </div>
+{% endmacro %}
+
+{% macro status_badge(member_count) %}
+  {% set status = household_status(member_count) %}
+  <span class="status-badge status-{{ status.color }}">{{ status.code }} — {{ status.label }}</span>
+{% endmacro %}
+
+{% macro sort_th(label, key, sort, direction, endpoint, extra_params={}) %}
+  {% set next_dir = 'desc' if (sort == key and direction == 'asc') else 'asc' %}
+  <th>
+    <a class="sort-link" href="{{ url_for(endpoint, sort=key, dir=next_dir, **extra_params) }}">
+      {{ label }}{% if sort == key %} <span class="sort-arrow">{{ '▲' if direction == 'asc' else '▼' }}</span>{% endif %}
+    </a>
+  </th>
+{% endmacro %}

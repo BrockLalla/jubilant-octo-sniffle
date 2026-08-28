@@ -1,0 +1,14 @@
+<div class="admin-nav">
+  <a href="{{ url_for('admin.dashboard') }}" class="{{ 'active' if active == 'dashboard' else '' }}">Dashboard</a>
+  <a href="{{ url_for('admin.households') }}" class="{{ 'active' if active == 'households' else '' }}">Households</a>
+  <a href="{{ url_for('admin.visits') }}" class="{{ 'active' if active == 'visits' else '' }}">Visits</a>
+  <a href="{{ url_for('admin.reports') }}" class="{{ 'active' if active == 'reports' else '' }}">Reports</a>
+  <a href="{{ url_for('admin.timeslots') }}" class="{{ 'active' if active == 'timeslots' else '' }}">Timeslots</a>
+  <a href="{{ url_for('admin.closures') }}" class="{{ 'active' if active == 'closures' else '' }}">Blocked Dates</a>
+  <a href="{{ url_for('admin.stale_households') }}" class="{{ 'active' if active == 'stale' else '' }}">Stale Households</a>
+  <a href="{{ url_for('admin.possible_duplicates') }}" class="{{ 'active' if active == 'duplicates' else '' }}">Possible Duplicates</a>
+  <a href="{{ url_for('admin.settings') }}" class="{{ 'active' if active == 'settings' else '' }}">Email Settings</a>
+  <a href="{{ url_for('admin.backup') }}" class="{{ 'active' if active == 'backup' else '' }}">Backup &amp; Restore</a>
+  <a href="{{ url_for('admin.users') }}" class="{{ 'active' if active == 'users' else '' }}">Admins</a>
+  <a href="{{ url_for('admin.logout') }}">Log Out</a>
+</div>

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Possible Duplicates{% endblock %}
+{% block content %}
+  {% set active = 'duplicates' %}
+  {% include "admin/_nav.html" %}
+  <h1>Possible Duplicate People</h1>
+  <p class="subtitle">
+    Same name, registered under two different households. High confidence means the birth year
+    matches too; low confidence means at least one side has no birth year on file to compare.
+    This includes households migrated in before this check existed, so it's worth a periodic look.
+  </p>
+
+  <div class="filter-bar" style="margin-bottom:1rem;">
+    <a href="{{ url_for('admin.possible_duplicates') }}" class="btn btn-small {{ 'btn-primary' if not confidence else 'btn-secondary' }}">
+      All ({{ counts.all }})
+    </a>
+    <a href="{{ url_for('admin.possible_duplicates', confidence='high') }}" class="btn btn-small {{ 'btn-primary' if confidence == 'high' else 'btn-secondary' }}">
+      High Confidence ({{ counts.high }})
+    </a>
+    <a href="{{ url_for('admin.possible_duplicates', confidence='low') }}" class="btn btn-small {{ 'btn-primary' if confidence == 'low' else 'btn-secondary' }}">
+      Low Confidence ({{ counts.low }})
+    </a>
+  </div>
+
+  <div class="table-scroll">
+    <table>
+      <tr>
+        <th>Name</th><th>Confidence</th>
+        <th>Household A</th><th>Household B</th><th></th>
+      </tr>
+      {% for r in rows %}
+        <tr>
+          <td>{{ r.name }}</td>
+          <td>
+            {% if r.confidence == 'high' %}
+              <span style="color:#7a1913; font-weight:600;">High</span>
+            {% else %}
+              <span style="color:#5c3d00; font-weight:600;">Low</span>
+            {% endif %}
+          </td>
+          <td>{{ r.hh1_code }} &middot; {{ r.hh1_primary }}</td>
+          <td>{{ r.hh2_code }} &middot; {{ r.hh2_primary }}</td>
+          <td style="white-space:nowrap;">
+            <a class="btn btn-small btn-secondary" href="{{ url_for('admin.household_detail', household_id=r.hh1_id) }}">View A</a>
+            <a class="btn btn-small btn-secondary" href="{{ url_for('admin.household_detail', household_id=r.hh2_id) }}">View B</a>
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% if not rows %}
+    <p class="muted">No possible duplicates in this category.</p>
+  {% endif %}
+{% endblock %}

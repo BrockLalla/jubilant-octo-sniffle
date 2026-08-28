@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}The Neighbourhood Pantry Tracker{% endblock %}
+{% block content %}
+  <p class="subtitle" style="text-align:center; font-size:1.3rem;">Choose what you'd like to do</p>
+
+  <a class="card card-link" href="{{ url_for('public.checkin') }}">
+    <h2>✅ Volunteer Check-In</h2>
+    <p>Look up a household and record today's pickup</p>
+  </a>
+
+  <a class="card card-link" href="{{ url_for('public.register') }}">
+    <h2>📝 Register a New Household</h2>
+    <p>First time visiting the pantry? Fill out this form</p>
+  </a>
+
+  {% if is_local %}
+    <a class="card card-link" href="{{ url_for('admin.dashboard') }}">
+      <h2>🔒 Admin Dashboard</h2>
+      <p>View records, visit history, and export reports</p>
+    </a>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% import "_macros.html" as macros %}
+{% block title %}Visits{% endblock %}
+{% block content %}
+  {% set active = 'visits' %}
+  {% include "admin/_nav.html" %}
+  <h1>Visit Log</h1>
+
+  <form method="get" class="card">
+    <label>Start Date</label>
+    <input type="date" name="start_date" value="{{ start_date }}" min="1900-01-01" max="2099-12-31">
+    <label>End Date</label>
+    <input type="date" name="end_date" value="{{ end_date }}" min="1900-01-01" max="2099-12-31">
+    <div class="btn-row" style="margin-top:1rem;">
+      <button type="submit" class="btn btn-primary">Filter</button>
+      <a class="btn btn-secondary" href="{{ url_for('admin.visits') }}">Clear</a>
+    </div>
+  </form>
+
+  <a class="btn btn-secondary" href="{{ url_for('admin.export_visits', start_date=start_date, end_date=end_date) }}">⬇️ Download This List as CSV</a>
+
+  <div class="table-scroll">
+    <table>
+      {% set params = {'start_date': start_date, 'end_date': end_date} %}
+      <tr>
+        {{ macros.sort_th('Date', 'date', sort, direction, 'admin.visits', params) }}
+        {{ macros.sort_th('Household', 'household', sort, direction, 'admin.visits', params) }}
+        {{ macros.sort_th('Household Code', 'code', sort, direction, 'admin.visits', params) }}
+        {{ macros.sort_th('Size', 'size', sort, direction, 'admin.visits', params) }}
+        {{ macros.sort_th('Checked In By', 'checked_in_by', sort, direction, 'admin.visits', params) }}
+        <th></th>
+      </tr>
+      {% for v in rows %}
+        <tr>
+          <td>{{ v.visit_date }}</td>
+          <td>{{ v.primary_name }}</td>
+          <td>{{ v.household_code }}</td>
+          <td>{{ v.member_count }}</td>
+          <td>{{ v.checked_in_by or '' }}</td>
+          <td>
+            <form method="post" action="{{ url_for('admin.delete_visit', visit_id=v.id) }}"
+                  onsubmit="return confirm('Delete this visit ({{ v.primary_name }}, {{ v.visit_date }})? This cannot be undone.');">
+              <input type="hidden" name="start_date" value="{{ start_date }}">
+              <input type="hidden" name="end_date" value="{{ end_date }}">
+              <input type="hidden" name="sort" value="{{ sort }}">
+              <input type="hidden" name="direction" value="{{ direction }}">
+              <button type="submit" class="btn btn-small btn-danger">🗑️ Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% if not rows %}
+    <p class="muted">No visits in this range.</p>
+  {% endif %}
+{% endblock %}
