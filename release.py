@@ -68,7 +68,11 @@ def build_and_package(version):
     print(f"\n=== Building v{version} ===")
     for d in ("build", "dist"):
         shutil.rmtree(os.path.join(ROOT, d), ignore_errors=True)
-    run([sys.executable, "-m", "PyInstaller", "pantry.spec"])
+    # PANTRY_RELEASE_BUILD tells pantry.spec to skip bundling this Mac's
+    # live database as seed data -- a published GitHub Release must never
+    # carry real household PII (see pantry.spec for the full reasoning).
+    env = dict(os.environ, PANTRY_RELEASE_BUILD="1")
+    run([sys.executable, "-m", "PyInstaller", "pantry.spec"], env=env)
 
     app_path = os.path.join(ROOT, "dist", "Pantry Tracker.app")
     if not os.path.isdir(app_path):

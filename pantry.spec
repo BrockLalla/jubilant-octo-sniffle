@@ -14,9 +14,15 @@ with open("VERSION") as _f:
 # .app carries the current data with it, with no separate export/import
 # step. Existing installs are untouched: seeding only happens when a
 # machine has no database of its own yet (see db.seed_database_if_missing).
+#
+# Skipped entirely for release builds (PANTRY_RELEASE_BUILD=1, set by
+# release.py) -- a GitHub Release is downloadable by anyone, and must never
+# carry real household PII. Published releases install empty; existing data
+# on any machine is untouched either way, and a brand-new computer gets set
+# up via Backup & Restore instead.
 _datas = [("templates", "templates"), ("static", "static")]
 _seed_db = os.path.expanduser("~/Library/Application Support/PantryTracker/pantry.db")
-if os.path.exists(_seed_db):
+if os.path.exists(_seed_db) and not os.environ.get("PANTRY_RELEASE_BUILD"):
     _datas.append((_seed_db, "seed_data"))
 
 a = Analysis(
