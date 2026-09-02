@@ -24,7 +24,7 @@ import sys
 import urllib.request
 import zipfile
 
-GITHUB_REPO = "REPLACE_ME/pantry-tracker"  # owner/repo, set once the repo exists
+GITHUB_REPO = "BrockLalla/jubilant-octo-sniffle"  # owner/repo
 
 
 def _data_dir():

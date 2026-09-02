@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Admins{% endblock %}
+{% block page_class %}page-wide{% endblock %}
 {% block content %}
   {% set active = 'users' %}
   {% include "admin/_nav.html" %}
@@ -7,13 +8,35 @@
   <p class="subtitle">Everyone with full access to household and visit records.</p>
 
   <div class="table-scroll">
-    <table>
-      <tr><th>Email</th><th>Username</th><th>Added</th></tr>
+    <table class="table-centered admins-table">
+      <tr>
+        <th>Email</th><th>Username</th><th>Role</th><th>Added</th><th></th>
+      </tr>
       {% for a in admins %}
         <tr>
-          <td>{{ a.email or '' }}</td>
-          <td>{{ a.username }}</td>
-          <td>{{ a.created_at[:10] }}</td>
+          <td class="ellipsis-cell" title="{{ a.email or '' }}">{{ a.email or '' }}</td>
+          <td class="ellipsis-cell" title="{{ a.username }}">{{ a.username }}</td>
+          <td>{% if a.is_super_admin %}<span class="status-badge status-blue">⭐ Super Admin</span>{% else %}Admin{% endif %}</td>
+          <td style="white-space:nowrap;">{{ a.created_at[:10] }}</td>
+          <td>
+            <a class="btn btn-small btn-secondary" href="{{ url_for('admin.edit_admin_user', admin_id=a.id) }}">✏️ Edit</a>
+            {% if current_admin.is_super_admin %}
+              <form method="post" style="display:inline">
+                <input type="hidden" name="action" value="toggle_super">
+                <input type="hidden" name="admin_id" value="{{ a.id }}">
+                <button type="submit" class="btn btn-small btn-secondary">
+                  {{ 'Remove Super Admin' if a.is_super_admin else 'Make Super Admin' }}
+                </button>
+              </form>
+              {% if a.id != current_admin.id %}
+                <form method="post" style="display:inline" onsubmit="return confirm('Remove {{ a.username }}\'s admin account? They will lose access immediately.');">
+                  <input type="hidden" name="action" value="delete_admin">
+                  <input type="hidden" name="admin_id" value="{{ a.id }}">
+                  <button type="submit" class="btn btn-small btn-danger">🗑️ Remove</button>
+                </form>
+              {% endif %}
+            {% endif %}
+          </td>
         </tr>
       {% endfor %}
     </table>

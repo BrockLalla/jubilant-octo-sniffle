@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Stale Households{% endblock %}
+{% block page_class %}page-wide{% endblock %}
 {% block content %}
   {% set active = 'stale' %}
   {% include "admin/_nav.html" %}
@@ -7,14 +8,14 @@
   <p class="subtitle">Households with no pickup (or never picked up since registering) in over 6 months.</p>
 
   <div class="table-scroll">
-    <table>
+    <table class="table-centered">
       <tr><th>Household Code</th><th>Primary Name</th><th>Last Visit</th><th>Registered</th><th></th></tr>
       {% for h in rows %}
         <tr>
           <td>{{ h.household_code }}</td>
           <td>{{ h.primary_name }}</td>
-          <td>{{ h.last_visit_display or 'Never visited' }}</td>
-          <td>{{ h.created_at[:10] }}</td>
+          <td style="white-space:nowrap;">{{ h.last_visit_display or 'Never visited' }}</td>
+          <td style="white-space:nowrap;">{{ h.created_at[:10] }}</td>
           <td style="white-space:nowrap;">
             <a class="btn btn-small btn-secondary" href="{{ url_for('admin.household_detail', household_id=h.id) }}">View / Edit</a>
             <form method="post" action="{{ url_for('admin.household_detail', household_id=h.id) }}" style="display:inline"

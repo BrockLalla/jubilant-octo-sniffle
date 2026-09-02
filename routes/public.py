@@ -166,6 +166,7 @@ def register():
             designate_first_name=request.form.get("designate_first_name", "").strip(),
             designate_last_name=request.form.get("designate_last_name", "").strip(),
             designate_relationship=request.form.get("designate_relationship", "").strip(),
+            designate_id_verified=bool(request.form.get("designate_id_verified")),
             id_verified=id_verified, needs_diapers=needs_diapers, needs_formula=needs_formula,
         )
         data = db.get_household(household_id)
@@ -236,8 +237,12 @@ def checkin_do(household_id):
         return redirect(url_for("public.checkin"))
 
     verified_ids = [int(v) for v in request.form.getlist("verified_member_ids[]") if v.isdigit()]
-    if verified_ids:
-        db.mark_members_id_verified(household_id, verified_ids)
+    verify_designate = bool(request.form.get("verify_designate"))
+    if verified_ids or verify_designate:
+        if verified_ids:
+            db.mark_members_id_verified(household_id, verified_ids)
+        if verify_designate:
+            db.mark_designate_id_verified(household_id)
         data = db.get_household(household_id)
 
     existing_visit = db.visit_this_week(household_id)

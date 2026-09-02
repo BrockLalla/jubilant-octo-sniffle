@@ -195,12 +195,14 @@ def init_db():
     })
     _ensure_columns(conn, "admin_users", {
         "email": "TEXT",
+        "is_super_admin": "INTEGER NOT NULL DEFAULT 0",
     })
     _ensure_columns(conn, "members", {
         "id_verified": "INTEGER NOT NULL DEFAULT 0",
     })
     _ensure_columns(conn, "households", {
         "anonymized_at": "TEXT",
+        "designate_id_verified": "INTEGER NOT NULL DEFAULT 0",
     })
     conn.commit()
     conn.close()
@@ -602,6 +604,7 @@ def possible_duplicate_people(confidence=None):
 def create_household(primary_first_name, primary_last_name, phone, email,
                       pref_timeslot_ids, member_rows, designate_first_name=None,
                       designate_last_name=None, designate_relationship=None,
+                      designate_id_verified=False,
                       id_verified=False, needs_diapers=False, needs_formula=False):
     """member_rows: list of dicts with first_name, last_name, date_of_birth,
     relationship. The primary applicant should be included as one of the
@@ -621,11 +624,12 @@ def create_household(primary_first_name, primary_last_name, phone, email,
             "INSERT INTO households (household_code, primary_first_name, primary_last_name, phone, email, "
             "pref1_timeslot_id, pref2_timeslot_id, pref3_timeslot_id, "
             "assigned_timeslot_id, designate_first_name, designate_last_name, "
-            "designate_relationship, id_verified, needs_diapers, needs_formula, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "designate_relationship, designate_id_verified, id_verified, needs_diapers, needs_formula, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (household_code, primary_first_name, primary_last_name, phone, email,
              pref1, pref2, pref3, assigned_timeslot_id, designate_first_name or None,
              designate_last_name or None, designate_relationship or None,
+             1 if designate_id_verified else 0,
              1 if id_verified else 0, 1 if needs_diapers else 0, 1 if needs_formula else 0, ts),
         )
         household_id = cur.lastrowid
@@ -773,17 +777,19 @@ def list_all_households(sort=None, direction="asc"):
 def update_household(household_id, primary_first_name, primary_last_name, phone, email,
                       assigned_timeslot_id, designate_first_name=None,
                       designate_last_name=None, designate_relationship=None,
+                      designate_id_verified=False,
                       id_verified=False, needs_diapers=False, needs_formula=False):
     conn = get_db()
     try:
         conn.execute(
             "UPDATE households SET primary_first_name = ?, primary_last_name = ?, phone = ?, email = ?, "
             "assigned_timeslot_id = ?, designate_first_name = ?, "
-            "designate_last_name = ?, designate_relationship = ?, id_verified = ?, "
+            "designate_last_name = ?, designate_relationship = ?, designate_id_verified = ?, id_verified = ?, "
             "needs_diapers = ?, needs_formula = ? WHERE id = ?",
             (primary_first_name, primary_last_name, phone, email,
              assigned_timeslot_id, designate_first_name or None, designate_last_name or None,
-             designate_relationship or None, 1 if id_verified else 0, 1 if needs_diapers else 0,
+             designate_relationship or None, 1 if designate_id_verified else 0,
+             1 if id_verified else 0, 1 if needs_diapers else 0,
              1 if needs_formula else 0, household_id),
         )
         conn.commit()
@@ -915,6 +921,18 @@ def mark_members_id_verified(household_id, member_ids):
             f"UPDATE members SET id_verified = 1 WHERE household_id = ? AND id IN ({placeholders})",
             [household_id] + list(member_ids),
         )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def mark_designate_id_verified(household_id):
+    """Same idea as mark_members_id_verified, but for the household's
+    authorized pickup designate (not a members-table row -- their info
+    lives directly on the household)."""
+    conn = get_db()
+    try:
+        conn.execute("UPDATE households SET designate_id_verified = 1 WHERE id = ?", (household_id,))
         conn.commit()
     finally:
         conn.close()
@@ -1479,8 +1497,39 @@ def get_admin_user_by_id(admin_user_id):
 def list_admin_users():
     conn = get_db()
     try:
-        rows = conn.execute("SELECT id, username, email, created_at FROM admin_users ORDER BY created_at").fetchall()
+        rows = conn.execute(
+            "SELECT id, username, email, is_super_admin, created_at FROM admin_users ORDER BY created_at"
+        ).fetchall()
         return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def set_admin_super(admin_user_id, is_super):
+    conn = get_db()
+    try:
+        conn.execute(
+            "UPDATE admin_users SET is_super_admin = ? WHERE id = ?",
+            (1 if is_super else 0, admin_user_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def delete_admin_user(admin_user_id):
+    """Returns True on success. Refuses to delete the last remaining admin
+    account -- if that ever hit zero, /admin/setup would become reachable
+    again and let anyone on the network create a brand-new admin account
+    from scratch."""
+    conn = get_db()
+    try:
+        count = conn.execute("SELECT COUNT(*) FROM admin_users").fetchone()[0]
+        if count <= 1:
+            return False
+        conn.execute("DELETE FROM admin_users WHERE id = ?", (admin_user_id,))
+        conn.commit()
+        return True
     finally:
         conn.close()
 
@@ -1489,6 +1538,15 @@ def update_admin_password(admin_user_id, password_hash):
     conn = get_db()
     try:
         conn.execute("UPDATE admin_users SET password_hash = ? WHERE id = ?", (password_hash, admin_user_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def update_admin_username(admin_user_id, username):
+    conn = get_db()
+    try:
+        conn.execute("UPDATE admin_users SET username = ? WHERE id = ?", (username, admin_user_id))
         conn.commit()
     finally:
         conn.close()

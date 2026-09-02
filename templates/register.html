@@ -86,6 +86,11 @@
 
       <label for="designate_relationship">Relationship to Household</label>
       <input type="text" id="designate_relationship" name="designate_relationship" value="{{ form.get('designate_relationship', '') }}" placeholder="e.g. Caregiver, Neighbor, Adult Child">
+
+      <label class="checkbox-label">
+        <input type="checkbox" name="designate_id_verified" value="1" {% if form.get('designate_id_verified') %}checked{% endif %}>
+        Government ID Checked
+      </label>
     </details>
 
     {% if show_duplicate_confirm %}

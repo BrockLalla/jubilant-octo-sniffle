@@ -33,7 +33,7 @@
 
   <p class="muted">Showing: {{ stats.period_label }}</p>
 
-  <div class="stats-grid">
+  <div class="stats-grid cols-4">
     <a class="stat-tile" href="{{ url_for('admin.visits') }}">
       <div class="value">{{ stats.households_served|commas }}</div>
       <div class="label">Households Served</div>

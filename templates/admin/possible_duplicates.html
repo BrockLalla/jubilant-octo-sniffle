@@ -1,5 +1,7 @@
 {% extends "base.html" %}
+{% import "_macros.html" as macros %}
 {% block title %}Possible Duplicates{% endblock %}
+{% block page_class %}page-wide{% endblock %}
 {% block content %}
   {% set active = 'duplicates' %}
   {% include "admin/_nav.html" %}
@@ -10,22 +12,30 @@
     This includes households migrated in before this check existed, so it's worth a periodic look.
   </p>
 
+  <form method="get" class="search-form" style="margin-bottom:1rem;">
+    <input type="hidden" name="confidence" value="{{ confidence or '' }}">
+    <input type="text" name="q" value="{{ query }}" placeholder="Search by name">
+    <button type="submit" class="btn btn-primary" style="width:auto;">Search</button>
+  </form>
+
   <div class="filter-bar" style="margin-bottom:1rem;">
-    <a href="{{ url_for('admin.possible_duplicates') }}" class="btn btn-small {{ 'btn-primary' if not confidence else 'btn-secondary' }}">
+    <a href="{{ url_for('admin.possible_duplicates', q=query or none) }}" class="btn btn-small {{ 'btn-primary' if not confidence else 'btn-secondary' }}">
       All ({{ counts.all }})
     </a>
-    <a href="{{ url_for('admin.possible_duplicates', confidence='high') }}" class="btn btn-small {{ 'btn-primary' if confidence == 'high' else 'btn-secondary' }}">
+    <a href="{{ url_for('admin.possible_duplicates', confidence='high', q=query or none) }}" class="btn btn-small {{ 'btn-primary' if confidence == 'high' else 'btn-secondary' }}">
       High Confidence ({{ counts.high }})
     </a>
-    <a href="{{ url_for('admin.possible_duplicates', confidence='low') }}" class="btn btn-small {{ 'btn-primary' if confidence == 'low' else 'btn-secondary' }}">
+    <a href="{{ url_for('admin.possible_duplicates', confidence='low', q=query or none) }}" class="btn btn-small {{ 'btn-primary' if confidence == 'low' else 'btn-secondary' }}">
       Low Confidence ({{ counts.low }})
     </a>
   </div>
 
   <div class="table-scroll">
-    <table>
+    <table class="dup-table">
+      {% set params = {'confidence': confidence, 'q': query} %}
       <tr>
-        <th>Name</th><th>Confidence</th>
+        {{ macros.sort_th('Name', 'name', sort, direction, 'admin.possible_duplicates', params) }}
+        <th>Confidence</th>
         <th>Household A</th><th>Household B</th><th></th>
       </tr>
       {% for r in rows %}

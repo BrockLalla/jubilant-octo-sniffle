@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% import "_macros.html" as macros %}
 {% block title %}{{ household.primary_name }}{% endblock %}
+{% block page_class %}page-wide{% endblock %}
 {% block content %}
   {% set active = 'households' %}
   {% include "admin/_nav.html" %}
@@ -61,6 +62,10 @@
       <input type="text" name="designate_last_name" value="{{ household.designate_last_name or '' }}">
       <label>Relationship to Household</label>
       <input type="text" name="designate_relationship" value="{{ household.designate_relationship or '' }}" placeholder="e.g. Caregiver, Neighbor, Adult Child">
+      <label class="checkbox-label">
+        <input type="checkbox" name="designate_id_verified" value="1" {% if household.designate_id_verified %}checked{% endif %}>
+        Government ID Checked
+      </label>
 
       <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Save Household Info</button>
     </form>
@@ -69,7 +74,7 @@
   <div class="card">
     <h2>Members ({{ members|length }})</h2>
     <div class="table-scroll">
-    <table class="members-table">
+    <table class="members-table table-centered">
       <tr><th>First Name</th><th>Last Name</th><th>Date of Birth</th><th>Relationship</th><th>ID Verified</th><th></th></tr>
       {% for m in members %}
         {% set dob_parts = m.date_of_birth.split('-') if m.date_of_birth else [] %}
@@ -88,7 +93,7 @@
           </td>
           <td><input type="text" name="relationship" value="{{ m.relationship }}" form="member-form-{{ m.id }}"></td>
           <td>
-            <input type="checkbox" name="id_verified" value="1" form="member-form-{{ m.id }}" {% if m.id_verified %}checked{% endif %}>
+            <input type="checkbox" name="id_verified" value="1" class="checkbox-lg" form="member-form-{{ m.id }}" {% if m.id_verified %}checked{% endif %}>
           </td>
           <td>
             <form id="member-form-{{ m.id }}" method="post" style="display:inline">

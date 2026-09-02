@@ -23,6 +23,15 @@ body {
   padding: 1.5rem 1.25rem 3rem;
 }
 
+/* A few pages (like a household's detail page, with its dense 6-column
+   Members table) genuinely need more room than the rest of the app --
+   widening this page specifically, rather than the shared .page width
+   everywhere, so it doesn't stretch out simpler/narrower tables on other
+   pages. */
+.page.page-wide {
+  max-width: 1700px;
+}
+
 header.top {
   background: #fff;
   border-bottom: 3px solid #0d1c2a;
@@ -338,6 +347,24 @@ textarea {
   min-width: 160px;
 }
 
+/* The DOB cell holds 3 selects (.dob-row); without forcing nowrap here,
+   .dob-row's flex-wrap would stack them into an ugly two-row mess. These
+   select min-widths are just enough to fit their content (a 4-digit year,
+   2-digit day, "September") -- no extra cell-level min-width on top of
+   that, which was making the whole table wider than it needed to be. */
+.members-table .dob-row {
+  flex-wrap: nowrap;
+}
+.members-table .dob-row select {
+  min-width: 56px;
+}
+.members-table .dob-row select:first-child {
+  min-width: 96px;
+}
+.members-table td:last-child {
+  white-space: nowrap;
+}
+
 /* Big, tappable checkboxes — native checkboxes default too small to trust on touch */
 .checkbox-label {
   display: flex;
@@ -363,6 +390,15 @@ textarea {
 .checkbox-label:has(input:checked) {
   border-color: #0d1c2a;
   background: #eef1f5;
+}
+
+/* A bigger checkbox on its own, no surrounding box/label -- e.g. a table
+   cell where .checkbox-label's full padded/bordered treatment would be
+   too heavy, but the browser-default checkbox size is too small to trust. */
+.checkbox-lg {
+  width: 1.4rem;
+  height: 1.4rem;
+  cursor: pointer;
 }
 
 /* A status icon (checkmark emoji or checkbox) next to a name in a table
@@ -513,7 +549,7 @@ table {
 }
 
 th, td {
-  text-align: left;
+  text-align: center;
   vertical-align: middle;
   padding: 0.6rem 0.7rem;
   border-bottom: 1px solid #e0e4e0;
@@ -521,10 +557,7 @@ th, td {
 
 th {
   background: #eef1f5;
-}
-
-.table-centered th, .table-centered td {
-  text-align: center;
+  white-space: nowrap;
 }
 
 .sort-link {
@@ -546,6 +579,34 @@ th {
 .table-scroll th,
 .table-scroll td {
   padding: 0.45rem 0.6rem;
+}
+
+.dup-table td:nth-child(1),
+.dup-table td:nth-child(3),
+.dup-table td:nth-child(4) {
+  white-space: nowrap;
+}
+
+/* All 5 columns forced to equal width via table-layout: fixed, so the
+   table never has to grow past the page to fit a long email address --
+   auto layout would otherwise let Email/Username dominate and squeeze
+   Role/Added/actions into whatever's left. Email/Username get an
+   ellipsis instead (full value in the title tooltip); the action column
+   wraps its buttons onto extra lines rather than overflowing. */
+.admins-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.admins-table th,
+.admins-table td {
+  width: 20%;
+}
+
+.admins-table .ellipsis-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* The Grant Report table's columns are short, mostly-numeric counts --
@@ -614,13 +675,18 @@ th {
   flex-wrap: wrap;
   justify-content: center;
   gap: 1rem;
-  margin: 1.5rem 0;
+  margin: 1.5rem auto;
+  max-width: 700px;
 }
 
 .stat-tile {
-  display: block;
-  flex: 1 1 180px;
-  max-width: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 0 1 calc((100% - 2rem) / 3);
+  aspect-ratio: 1 / 1;
+  box-sizing: border-box;
   background: #fff;
   border: 1px solid #d8ded9;
   border-radius: 0.75rem;
@@ -629,6 +695,15 @@ th {
   text-decoration: none;
   color: inherit;
   transition: border-color 0.15s, transform 0.15s;
+}
+
+/* Dashboard's 7-tile grid: 4 across then 3, instead of the default 3-across. */
+.stats-grid.cols-4 {
+  max-width: 930px;
+}
+
+.stats-grid.cols-4 .stat-tile {
+  flex-basis: calc((100% - 3rem) / 4);
 }
 
 a.stat-tile:hover {
@@ -729,7 +804,8 @@ a.stat-tile:hover {
   justify-content: center;
   gap: 0.5rem;
   flex-wrap: wrap;
-  margin-bottom: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto 1.5rem;
 }
 
 .admin-nav a {

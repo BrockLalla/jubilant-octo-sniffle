@@ -75,7 +75,16 @@
           <tr>
             <td>{{ household.designate_first_name }} {{ household.designate_last_name }}</td>
             <td>{{ household.designate_relationship or 'Authorized Designate' }}</td>
-            <td class="muted">—</td>
+            <td>
+              {% if household.designate_id_verified %}
+                <span class="id-status-row"><span class="id-status-icon">✅</span></span>
+              {% else %}
+                <label class="id-status-row" style="color:#b3261e; cursor:pointer;">
+                  <span class="id-status-icon"><input type="checkbox" name="verify_designate" value="1" form="checkin-form"></span>
+                  Verify Now
+                </label>
+              {% endif %}
+            </td>
           </tr>
         {% endif %}
       </table>

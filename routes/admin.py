@@ -182,10 +182,24 @@ def possible_duplicates():
     confidence = request.args.get("confidence", "").strip() or None
     if confidence not in (None, "high", "low"):
         confidence = None
+    search = request.args.get("q", "").strip()
+    sort = request.args.get("sort", "").strip() or "name"
+    direction = "desc" if request.args.get("dir") == "desc" else "asc"
+
+    rows = db.possible_duplicate_people(confidence=confidence)
+    if search:
+        needle = search.lower()
+        rows = [r for r in rows if needle in r["name"].lower()]
+    if sort == "name":
+        rows = sorted(rows, key=lambda r: r["name"].lower(), reverse=(direction == "desc"))
+
     return render_template(
         "admin/possible_duplicates.html",
-        rows=db.possible_duplicate_people(confidence=confidence),
+        rows=rows,
         confidence=confidence,
+        query=search,
+        sort=sort,
+        direction=direction,
         counts={
             "all": len(db.possible_duplicate_people()),
             "high": len(db.possible_duplicate_people(confidence="high")),
@@ -211,6 +225,29 @@ def users():
             else:
                 db.update_admin_email(current_admin["id"], email)
                 flash("Your email has been updated.", "success")
+        elif action == "delete_admin":
+            if not current_admin["is_super_admin"]:
+                flash("Only a super admin can remove admin accounts.", "error")
+            else:
+                target_id = int(request.form.get("admin_id"))
+                if target_id == current_admin["id"]:
+                    flash("You can't remove your own account. Have another super admin do it instead.", "error")
+                elif db.delete_admin_user(target_id):
+                    flash("Admin account removed.", "success")
+                else:
+                    flash("Can't remove the last remaining admin account.", "error")
+        elif action == "toggle_super":
+            if not current_admin["is_super_admin"]:
+                flash("Only a super admin can grant or remove super admin access.", "error")
+            else:
+                target_id = int(request.form.get("admin_id"))
+                target = db.get_admin_user_by_id(target_id)
+                if target:
+                    db.set_admin_super(target_id, not target["is_super_admin"])
+                    flash(
+                        f"{target['username']} is {'now' if not target['is_super_admin'] else 'no longer'} a super admin.",
+                        "success",
+                    )
         else:
             email = request.form.get("email", "").strip()
             if not email:
@@ -235,6 +272,55 @@ def users():
         invite_valid_hours=db.INVITE_VALID_HOURS,
         current_admin=current_admin,
     )
+
+
+@bp.route("/users/<int:admin_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_admin_user(admin_id):
+    current_admin = db.get_admin_user(session.get("admin_username"))
+    target = db.get_admin_user_by_id(admin_id)
+    if not target:
+        flash("Admin account not found.", "error")
+        return redirect(url_for("admin.users"))
+
+    editing_self = target["id"] == current_admin["id"]
+    if not editing_self and not current_admin["is_super_admin"]:
+        flash("Only a super admin can edit another admin's account.", "error")
+        return redirect(url_for("admin.users"))
+
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+        errors = []
+
+        if not username:
+            errors.append("Username can't be blank.")
+        else:
+            existing = db.get_admin_user(username)
+            if existing and existing["id"] != target["id"]:
+                errors.append(f'"{username}" is already taken by another admin.')
+
+        if password or confirm_password:
+            if len(password) < 8:
+                errors.append("New password must be at least 8 characters.")
+            elif password != confirm_password:
+                errors.append("New passwords do not match.")
+
+        if errors:
+            for e in errors:
+                flash(e, "error")
+            return render_template("admin/edit_admin.html", target=target, editing_self=editing_self)
+
+        db.update_admin_username(target["id"], username)
+        if password:
+            db.update_admin_password(target["id"], generate_password_hash(password, method="pbkdf2:sha256"))
+        if editing_self:
+            session["admin_username"] = username
+        flash("Account updated." if editing_self else f"{username}'s account has been updated.", "success")
+        return redirect(url_for("admin.users"))
+
+    return render_template("admin/edit_admin.html", target=target, editing_self=editing_self)
 
 
 @bp.route("/accept-invite/<token>", methods=["GET", "POST"])
@@ -324,6 +410,7 @@ def household_detail(household_id):
                 designate_first_name=request.form.get("designate_first_name", "").strip(),
                 designate_last_name=request.form.get("designate_last_name", "").strip(),
                 designate_relationship=request.form.get("designate_relationship", "").strip(),
+                designate_id_verified=bool(request.form.get("designate_id_verified")),
                 id_verified=bool(request.form.get("id_verified")),
                 needs_diapers=bool(request.form.get("needs_diapers")),
                 needs_formula=bool(request.form.get("needs_formula")),
