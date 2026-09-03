@@ -12,11 +12,27 @@ nothing leaves the building.
 
 1. Double-click **`Pantry Tracker.app`** (in the `dist` folder, or wherever you've moved it —
    e.g. your Applications folder or Desktop).
-2. The first time only, macOS will refuse to open it ("Apple could not verify..."). Fix this
-   once:
-   - Right-click (or Control-click) the app icon → **Open**.
-   - A dialog appears — click **Open** again.
-   - After this first time, double-clicking normally always works.
+2. The first time only, macOS will refuse to open it, since it isn't signed by a paid Apple
+   Developer certificate. Fix this once, then double-clicking normally always works after:
+   - Right-click (or Control-click) the app icon → **Open**. A dialog appears — click
+     **Open** again. This fixes the common "Apple could not verify..." version.
+   - If instead you see **"is damaged and can't be opened. You should move it to the
+     Trash"** — this is a false alarm caused by the same "downloaded from the internet"
+     flag, not real damage. Open **Terminal** (Spotlight search → type `Terminal`) and run:
+     ```
+     xattr -cr "/Applications/Pantry Tracker.app"
+     ```
+     (adjust the path if it's not in Applications), then double-click the app again.
+   - If it opens but says **"permission denied"**, or nothing happens at all when you
+     double-click it, the app's own program file lost its "allowed to run" flag somewhere
+     along the way (this can happen with some browsers' automatic unzipping). Fix it in
+     Terminal with:
+     ```
+     chmod +x "/Applications/Pantry Tracker.app/Contents/MacOS/Pantry Tracker"
+     ```
+   - Easiest way to avoid all of this: transfer the app via AirDrop or a USB drive instead
+     of downloading it in a browser (see "First-time build" below) — that never gets the
+     "downloaded from the internet" flag in the first place.
 3. A browser window opens automatically to a **"Pantry Tracker Is Running"** screen with big
    buttons for Check-In, Register, and Admin, plus the network address to give volunteer
    devices.
