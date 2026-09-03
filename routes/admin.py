@@ -57,6 +57,34 @@ def setup():
     if db.admin_user_count() > 0:
         return redirect(url_for("admin.login"))
 
+    if request.method == "POST" and request.form.get("action") == "restore_backup":
+        uploaded = request.files.get("db_file")
+        if not uploaded or not uploaded.filename:
+            flash("Please choose a backup file to restore.", "error")
+            return render_template("admin/setup.html")
+
+        fd, tmp_path = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        uploaded.save(tmp_path)
+        try:
+            db.restore_database(tmp_path)
+        except ValueError as e:
+            flash(str(e), "error")
+            return render_template("admin/setup.html")
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
+        if db.admin_user_count() == 0:
+            flash(
+                "That backup was restored, but it doesn't contain any admin accounts -- "
+                "you'll need to create one below.", "error",
+            )
+            return render_template("admin/setup.html")
+
+        flash("Data restored from your backup. Log in with the account from your other computer.", "success")
+        return redirect(url_for("admin.login"))
+
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
