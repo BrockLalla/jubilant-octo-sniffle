@@ -197,16 +197,30 @@ def apply_staged_update_if_present():
     """Call once, at the very start of app launch, before the server binds
     to a port. Three possible outcomes:
 
-    1. A previous update was applied but never confirmed healthy (the
-       pending_health_check marker is still there) -- roll back to the
-       backed-up prior version and relaunch that instead.
+    1. A previous update's *own* first launch already used up its one
+       chance to confirm healthy and didn't (the pending_health_check
+       marker is still there, and already marked "seen") -- roll back to
+       the backed-up prior version and relaunch that instead.
     2. A new update is staged and ready -- swap it in, mark it pending
        confirmation, and relaunch (the new process will call
        confirm_update_healthy() once it's actually up and serving).
     3. Neither -- does nothing, returns normally.
 
-    Cases 1 and 2 replace this process entirely (relaunch + os._exit), so
-    control never returns to the caller in those cases.
+    Case 2's relaunch runs this exact function again immediately, as the
+    very first thing the freshly-swapped-in process does -- so the marker
+    it just wrote is always there to be seen right away. Without the
+    "seen" distinction below, that immediate re-check would always look
+    identical to case 1 and roll back an update before it ever got to
+    start its server, which is the bug this two-state marker exists to
+    avoid: a marker of exactly "pending" means "I haven't given this
+    version its one launch yet," so this call marks it "seen" and returns
+    normally instead, letting THIS launch actually run. Only a marker
+    already "seen" -- meaning a launch already got that one chance and
+    still never called confirm_update_healthy() -- triggers rollback.
+
+    Cases 1 and 2's relaunch (but not 2's normal return) replace this
+    process entirely (relaunch + os._exit), so control doesn't return to
+    the caller there.
     """
     current_app = _running_app_path()
     if not current_app:
@@ -214,7 +228,16 @@ def apply_staged_update_if_present():
 
     backup_app = current_app + ".backup"
 
-    if os.path.exists(_pending_health_check_marker()):
+    marker = _pending_health_check_marker()
+    if os.path.exists(marker):
+        with open(marker) as f:
+            state = f.read().strip()
+        if state == "pending":
+            # This IS that one chance -- let this launch proceed to start
+            # its server rather than rolling back before it even tries.
+            with open(marker, "w") as f:
+                f.write("seen")
+            return
         if os.path.isdir(backup_app):
             try:
                 if os.path.isdir(current_app):
@@ -222,10 +245,10 @@ def apply_staged_update_if_present():
                 shutil.move(backup_app, current_app)
             except Exception:
                 return  # couldn't roll back cleanly; leave things as-is rather than make it worse
-            os.remove(_pending_health_check_marker())
+            os.remove(marker)
             _relaunch(current_app)
         else:
-            os.remove(_pending_health_check_marker())
+            os.remove(marker)
         return
 
     staged_app = _find_app_in(_staging_dir())
