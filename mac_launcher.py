@@ -139,5 +139,15 @@ if __name__ == "__main__":
 
     threading.Thread(target=update_checker_loop, daemon=True).start()
 
+    if updater.running_from_protected_location():
+        rumps.alert(
+            title="Move Pantry Tracker to Applications",
+            message=(
+                "Pantry Tracker is running from Downloads, Desktop, or Documents. macOS blocks apps "
+                "there from updating themselves, so automatic updates will silently fail to install.\n\n"
+                "Quit the app, drag it into your Applications folder, and open it from there instead."
+            ),
+        )
+
     webbrowser.open(f"http://127.0.0.1:{PORT}/host")
     PantryTrackerApp().run()

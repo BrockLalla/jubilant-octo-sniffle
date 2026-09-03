@@ -53,6 +53,24 @@ def _pending_health_check_marker():
     return os.path.join(_update_dir(), "pending_health_check.txt")
 
 
+def _last_error_log():
+    return os.path.join(_update_dir(), "last_error.txt")
+
+
+def _log_error(context, exc):
+    """Best-effort note of what went wrong and when, for a human to find
+    later -- update failures were previously silent, which made a real
+    failure (e.g. no permission to modify the app bundle in a
+    macOS-protected folder like ~/Downloads) indistinguishable from
+    "nothing to do" until someone dug through this file by hand."""
+    import datetime
+    try:
+        with open(_last_error_log(), "a") as f:
+            f.write(f"{datetime.datetime.now().isoformat(timespec='seconds')} [{context}] {exc!r}\n")
+    except Exception:
+        pass  # logging must never itself crash the caller
+
+
 def get_current_version():
     """Reads CFBundleShortVersionString from the running app's own
     Info.plist. Returns '0.0.0' in dev mode or if anything about reading
@@ -74,6 +92,27 @@ def _running_app_path():
     if not getattr(sys, "frozen", False):
         return None
     return os.path.dirname(os.path.dirname(os.path.dirname(sys.executable)))
+
+
+def running_from_protected_location():
+    """True if the app is running from somewhere macOS's per-app folder
+    permissions (Downloads, Desktop, Documents) commonly block. An
+    unsigned/non-notarized app is never granted that access automatically,
+    so apply_staged_update_if_present()'s shutil.move of the app's own
+    bundle silently fails there -- caught, logged, and skipped, with no
+    visible error, making a real update failure indistinguishable from
+    "already up to date" until someone checks _last_error_log() by hand.
+    Used to warn the user once at startup rather than leave them guessing
+    why updates never seem to apply."""
+    app_path = _running_app_path()
+    if not app_path:
+        return False
+    protected = [
+        os.path.expanduser("~/Downloads"),
+        os.path.expanduser("~/Desktop"),
+        os.path.expanduser("~/Documents"),
+    ]
+    return any(os.path.dirname(app_path) == p for p in protected)
 
 
 def _version_tuple(v):
@@ -243,7 +282,8 @@ def apply_staged_update_if_present():
                 if os.path.isdir(current_app):
                     shutil.rmtree(current_app)
                 shutil.move(backup_app, current_app)
-            except Exception:
+            except Exception as e:
+                _log_error("rollback", e)
                 return  # couldn't roll back cleanly; leave things as-is rather than make it worse
             os.remove(marker)
             _relaunch(current_app)
@@ -260,7 +300,8 @@ def apply_staged_update_if_present():
             shutil.rmtree(backup_app, ignore_errors=True)
         shutil.move(current_app, backup_app)
         shutil.move(staged_app, current_app)
-    except Exception:
+    except Exception as e:
+        _log_error("apply", e)
         # Best-effort recovery: if the move partway failed, try to restore
         # the original app from backup so we don't leave nothing runnable.
         if os.path.isdir(backup_app) and not os.path.isdir(current_app):
