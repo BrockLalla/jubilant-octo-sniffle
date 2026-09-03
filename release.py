@@ -108,6 +108,20 @@ def sha256_file(path):
     return h.hexdigest()
 
 
+def _write_symlink(zf, full_path, arc_root):
+    """Writes a symlink as an actual symlink entry in the zip (Unix mode
+    S_IFLNK, data = the link target string) rather than as a plain file --
+    `unzip` and Python's own zipfile.extractall() both recreate a real
+    symlink from this encoding, which is what lets PyInstaller's app
+    bundle work at all after being unzipped elsewhere."""
+    arcname = os.path.relpath(full_path, arc_root)
+    target = os.readlink(full_path)
+    info = zipfile.ZipInfo(arcname)
+    info.create_system = 3  # Unix, so external_attr's upper 16 bits are interpreted as st_mode
+    info.external_attr = (0o120777 << 16)  # S_IFLNK | rwxrwxrwx
+    zf.writestr(info, target)
+
+
 def build_and_package(version):
     print(f"\n=== Building v{version} ===")
     for d in ("build", "dist"):
@@ -124,12 +138,33 @@ def build_and_package(version):
 
     zip_path = os.path.join(ROOT, "dist", ZIP_NAME)
     print(f"Zipping {app_path} -> {zip_path}")
+    arc_root = os.path.dirname(app_path)
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
-        for dirpath, dirnames, filenames in os.walk(app_path):
+        # followlinks=False (the default) means os.walk lists a symlinked
+        # directory in dirnames but never descends into it -- PyInstaller's
+        # macOS bundles rely heavily on exactly this (e.g.
+        # Contents/Frameworks/static -> ../Resources/static, and the same
+        # for every bundled package's dist-info), since sys._MEIPASS points
+        # at Frameworks at runtime. A plain z.write() loop over `filenames`
+        # alone silently drops every one of those symlinked directories --
+        # they're neither a file to write nor a directory this walk visits
+        # -- which breaks nearly every resource lookup in the built app.
+        # Both symlinked directories (from dirnames) and symlinked files
+        # (which DO appear in filenames) are written as real symlink
+        # entries here instead, so `unzip` recreates them as symlinks.
+        for dirpath, dirnames, filenames in os.walk(app_path, followlinks=False):
+            for name in list(dirnames):
+                full = os.path.join(dirpath, name)
+                if os.path.islink(full):
+                    _write_symlink(z, full, arc_root)
+                    dirnames.remove(name)
             for name in filenames:
                 full = os.path.join(dirpath, name)
-                arcname = os.path.relpath(full, os.path.dirname(app_path))
-                z.write(full, arcname)
+                arcname = os.path.relpath(full, arc_root)
+                if os.path.islink(full):
+                    _write_symlink(z, full, arc_root)
+                else:
+                    z.write(full, arcname)
 
     checksum = sha256_file(zip_path)
     sha_path = zip_path + ".sha256"
