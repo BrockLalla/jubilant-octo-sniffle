@@ -1,0 +1,26 @@
+# Fly.io deployment config. Rename `app` below once you've picked a real
+# app name with `fly launch` (it needs to be globally unique on Fly) --
+# everything else here should work as-is.
+#
+# Deliberately pinned to exactly one machine, never scaled out: the
+# database is SQLite on a mounted volume, which only one process can
+# safely write to at a time. See README.md for the full reasoning.
+app = "tnc-pantry-tracker"
+primary_region = "iad"  # pick whichever Fly region is closest to the church
+
+[build]
+
+[env]
+  DATA_DIR = "/data"
+  PORT = "8080"
+
+[mounts]
+  source = "pantry_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1

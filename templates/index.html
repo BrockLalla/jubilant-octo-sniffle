@@ -13,10 +13,8 @@
     <p>First time visiting the pantry? Fill out this form</p>
   </a>
 
-  {% if is_local %}
-    <a class="card card-link" href="{{ url_for('admin.dashboard') }}">
-      <h2>🔒 Admin Dashboard</h2>
-      <p>View records, visit history, and export reports</p>
-    </a>
-  {% endif %}
+  <a class="card card-link" href="{{ url_for('admin.dashboard') }}">
+    <h2>🔒 Admin Dashboard</h2>
+    <p>View records, visit history, and export reports</p>
+  </a>
 {% endblock %}

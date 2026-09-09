@@ -15,12 +15,20 @@ import shutil
 def get_data_dir():
     """Where the database (and secret key) live.
 
-    When packaged with PyInstaller (sys.frozen), the app bundle itself is
-    read-only, so real data goes in the user's Application Support folder
-    and survives app rebuilds/updates. When running from source, keep it
-    next to the code for easy dev access.
+    DATA_DIR (set by the cloud deployment's fly.toml, pointing at the
+    mounted persistent volume) takes priority over everything else, so a
+    single env var is all cloud hosting needs to change here -- the
+    volume is persistent, so secret.txt written there survives redeploys
+    exactly like pantry.db does, with no separate secret-management step.
+
+    Otherwise: when packaged with PyInstaller (sys.frozen), the app bundle
+    itself is read-only, so real data goes in the user's Application
+    Support folder and survives app rebuilds/updates. When running from
+    source, keep it next to the code for easy dev access.
     """
-    if getattr(sys, "frozen", False):
+    if os.environ.get("DATA_DIR"):
+        base = os.environ["DATA_DIR"]
+    elif getattr(sys, "frozen", False):
         base = os.path.expanduser("~/Library/Application Support/PantryTracker")
     else:
         base = os.path.dirname(os.path.abspath(__file__))

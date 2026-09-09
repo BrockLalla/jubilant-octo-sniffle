@@ -1,0 +1,6 @@
+# Used by the Docker image for cloud deployment (Fly.io) -- see Dockerfile.
+# Deliberately separate from requirements.txt: pyinstaller and rumps there
+# are only for building the local macOS menu-bar app, and rumps in
+# particular (a Cocoa/macOS binding) won't even install on Linux.
+Flask==3.0.3
+gunicorn==23.0.0

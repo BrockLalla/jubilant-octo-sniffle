@@ -17,17 +17,26 @@ bp = Blueprint("admin", __name__)
 
 
 def external_url(path):
-    """Builds a link using this Mac's LAN-reachable address (its .local
-    hostname, or LAN IP as a fallback) rather than Flask's _external=True,
-    which builds from whatever host the CURRENT request came in on. The
-    admin always opens this app via 127.0.0.1 (see mac_launcher.py), so an
-    _external=True link built while they're logged in would silently
-    become "http://127.0.0.1:.../..." -- correct on their own Mac, but
-    dead on arrival for anyone else who opens it, since 127.0.0.1 on their
-    device just means their own device."""
-    host = netinfo.get_local_hostname() or netinfo.get_lan_ip()
-    port = request.host.split(":")[-1] if ":" in request.host else "80"
-    return f"http://{host}:{port}{path}"
+    """Builds a full URL for an email link, correctly for either deployment
+    this app can run under.
+
+    Locally (the packaged Mac app, opened via 127.0.0.1 -- see
+    mac_launcher.py), Flask's own url_for(_external=True) would silently
+    build "http://127.0.0.1:.../...", which is correct on the admin's own
+    Mac but dead on arrival for anyone else who opens it, since 127.0.0.1
+    on their device just means their own device -- so that case still
+    needs this Mac's actual LAN-reachable address (.local hostname, or LAN
+    IP as a fallback) instead.
+
+    On the cloud deployment there's no such trap -- a real hostname came
+    in on the request, forwarded correctly through ProxyFix (see
+    app.py) -- so url_for(_external=True) is exactly right there.
+    """
+    if request.host.split(":")[0] in ("127.0.0.1", "localhost"):
+        host = netinfo.get_local_hostname() or netinfo.get_lan_ip()
+        port = request.host.split(":")[-1] if ":" in request.host else "80"
+        return f"http://{host}:{port}{path}"
+    return request.url_root.rstrip("/") + path
 
 
 def _safe_next(default_url):

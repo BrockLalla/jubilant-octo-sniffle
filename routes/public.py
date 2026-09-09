@@ -11,8 +11,7 @@ bp = Blueprint("public", __name__)
 
 @bp.route("/")
 def index():
-    is_local = request.remote_addr in ("127.0.0.1", "::1")
-    return render_template("index.html", is_local=is_local)
+    return render_template("index.html")
 
 
 @bp.route("/host")
