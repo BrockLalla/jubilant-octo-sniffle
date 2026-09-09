@@ -48,21 +48,32 @@
         {% endfor %}
       </select>
 
-      <label for="pref2_timeslot_id">2nd Choice</label>
-      <select id="pref2_timeslot_id" name="pref2_timeslot_id">
-        <option value="">-- Select a time --</option>
-        {% for t in timeslots %}
-          <option value="{{ t.id }}" {% if form.get('pref2_timeslot_id')|string == t.id|string %}selected{% endif %}>{{ t.label }}</option>
-        {% endfor %}
-      </select>
+      <label class="checkbox-label">
+        <input type="checkbox" id="only_one_timeslot" name="only_one_timeslot" value="1" {% if form.get('only_one_timeslot') %}checked{% endif %}>
+        I can only make this one time (e.g. due to a work schedule)
+      </label>
+      <p class="hint" id="only-one-timeslot-hint">
+        Instead of picking a 2nd and 3rd choice, we'll hold you a spot in this exact time whenever there's
+        room (up to 30 households) instead of moving you to a busier or quieter slot.
+      </p>
 
-      <label for="pref3_timeslot_id">3rd Choice</label>
-      <select id="pref3_timeslot_id" name="pref3_timeslot_id">
-        <option value="">-- Select a time --</option>
-        {% for t in timeslots %}
-          <option value="{{ t.id }}" {% if form.get('pref3_timeslot_id')|string == t.id|string %}selected{% endif %}>{{ t.label }}</option>
-        {% endfor %}
-      </select>
+      <div id="pref-2-3-group">
+        <label for="pref2_timeslot_id">2nd Choice</label>
+        <select id="pref2_timeslot_id" name="pref2_timeslot_id">
+          <option value="">-- Select a time --</option>
+          {% for t in timeslots %}
+            <option value="{{ t.id }}" {% if form.get('pref2_timeslot_id')|string == t.id|string %}selected{% endif %}>{{ t.label }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="pref3_timeslot_id">3rd Choice</label>
+        <select id="pref3_timeslot_id" name="pref3_timeslot_id">
+          <option value="">-- Select a time --</option>
+          {% for t in timeslots %}
+            <option value="{{ t.id }}" {% if form.get('pref3_timeslot_id')|string == t.id|string %}selected{% endif %}>{{ t.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
     {% endif %}
 
     <details class="section-details" open>

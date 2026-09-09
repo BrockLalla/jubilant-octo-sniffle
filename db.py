@@ -417,6 +417,25 @@ def assign_timeslot(conn, pref_ids):
     return row["id"] if row else None
 
 
+def assign_mandatory_timeslot(conn, timeslot_id):
+    """For a household that can only make ONE specific time (e.g. a fixed
+    work schedule) rather than picking from a ranked list of preferences.
+    Unlike assign_timeslot(), this never redirects to a different slot just
+    because the admin-editable soft buffer (get_timeslot_active_capacity())
+    is reached -- it checks against the true physical/staffing capacity
+    (TIMESLOT_CAPACITY) instead, so a household that genuinely has no other
+    option still gets placed here whenever there's real room. Returns
+    timeslot_id if there was room, or None if that slot is truly full (at
+    which point there's no time this household can attend, and it's
+    correctly left unassigned for a person to follow up rather than
+    silently placed somewhere they can't come to)."""
+    if not timeslot_id:
+        return None
+    if _timeslot_active_count(conn, timeslot_id) >= TIMESLOT_CAPACITY:
+        return None
+    return timeslot_id
+
+
 def _timeslot_label_by_id(conn, timeslot_id):
     if not timeslot_id:
         return None
@@ -605,19 +624,26 @@ def create_household(primary_first_name, primary_last_name, phone, email,
                       pref_timeslot_ids, member_rows, designate_first_name=None,
                       designate_last_name=None, designate_relationship=None,
                       designate_id_verified=False,
-                      id_verified=False, needs_diapers=False, needs_formula=False):
+                      id_verified=False, needs_diapers=False, needs_formula=False,
+                      only_one_timeslot=False):
     """member_rows: list of dicts with first_name, last_name, date_of_birth,
     relationship. The primary applicant should be included as one of the
     rows with relationship='Self'. pref_timeslot_ids: up to 3 timeslot ids in
     rank order. designate_* fields describe someone other than a household
-    member who's authorized to pick up on the household's behalf (e.g. a
-    caregiver). Returns the new household id.
+    member who's allowed to pick up on the household's behalf (e.g. a
+    caregiver). only_one_timeslot: the household can genuinely only make
+    pref_timeslot_ids[0] (e.g. a fixed work schedule) rather than it just
+    being their top pick among several workable options -- see
+    assign_mandatory_timeslot(). Returns the new household id.
     """
     conn = get_db()
     try:
         ts = now_iso()
         pref1, pref2, pref3 = (list(pref_timeslot_ids) + [None, None, None])[:3]
-        assigned_timeslot_id = assign_timeslot(conn, [pref1, pref2, pref3])
+        if only_one_timeslot:
+            assigned_timeslot_id = assign_mandatory_timeslot(conn, pref1)
+        else:
+            assigned_timeslot_id = assign_timeslot(conn, [pref1, pref2, pref3])
         household_code = str(next_household_number(conn))
 
         cur = conn.execute(
@@ -1506,13 +1532,26 @@ def list_admin_users():
 
 
 def set_admin_super(admin_user_id, is_super):
+    """Returns True on success. Refuses to remove super admin status from
+    the last remaining super admin -- otherwise no one could ever invite a
+    new admin, grant super admin to anyone else, or edit another admin's
+    credentials again, with no recovery path short of editing the database
+    directly."""
     conn = get_db()
     try:
+        if not is_super:
+            count = conn.execute("SELECT COUNT(*) FROM admin_users WHERE is_super_admin = 1").fetchone()[0]
+            current = conn.execute(
+                "SELECT is_super_admin FROM admin_users WHERE id = ?", (admin_user_id,)
+            ).fetchone()
+            if current and current["is_super_admin"] and count <= 1:
+                return False
         conn.execute(
             "UPDATE admin_users SET is_super_admin = ? WHERE id = ?",
             (1 if is_super else 0, admin_user_id),
         )
         conn.commit()
+        return True
     finally:
         conn.close()
 

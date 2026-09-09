@@ -271,12 +271,22 @@ def users():
                 target_id = int(request.form.get("admin_id"))
                 target = db.get_admin_user_by_id(target_id)
                 if target:
-                    db.set_admin_super(target_id, not target["is_super_admin"])
-                    flash(
-                        f"{target['username']} is {'now' if not target['is_super_admin'] else 'no longer'} a super admin.",
-                        "success",
-                    )
-        else:
+                    new_status = not target["is_super_admin"]
+                    if db.set_admin_super(target_id, new_status):
+                        flash(
+                            f"{target['username']} is {'now' if new_status else 'no longer'} a super admin.",
+                            "success",
+                        )
+                    else:
+                        flash(
+                            f"Can't remove super admin from {target['username']} -- at least one super "
+                            f"admin must always exist. Make someone else a super admin first.",
+                            "error",
+                        )
+        elif action == "invite":
+            if not current_admin["is_super_admin"]:
+                flash("Only a super admin can invite new admins.", "error")
+                return redirect(url_for("admin.users"))
             email = request.form.get("email", "").strip()
             if not email:
                 flash("Enter an email address to invite.", "error")

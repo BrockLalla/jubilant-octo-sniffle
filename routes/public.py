@@ -56,6 +56,10 @@ def register():
         if len(filled_prefs) != len(set(filled_prefs)):
             errors.append("Please choose 3 different pickup times — the same time was picked twice.")
 
+        only_one_timeslot = bool(request.form.get("only_one_timeslot"))
+        if only_one_timeslot and not pref_ids[0]:
+            errors.append("Please select the one time you can make before checking \"I can only make this time.\"")
+
         try:
             primary_dob = db.combine_date_parts(
                 request.form.get("primary_dob_year"),
@@ -168,16 +172,24 @@ def register():
             designate_relationship=request.form.get("designate_relationship", "").strip(),
             designate_id_verified=bool(request.form.get("designate_id_verified")),
             id_verified=id_verified, needs_diapers=needs_diapers, needs_formula=needs_formula,
+            only_one_timeslot=only_one_timeslot,
         )
         data = db.get_household(household_id)
         household = data["household"]
 
         if filled_prefs and not household["assigned_timeslot_id"]:
-            flash(
-                "All pickup times are currently full (30 households each) — an admin will "
-                "follow up to assign you a time slot.",
-                "error",
-            )
+            if only_one_timeslot:
+                flash(
+                    "The one time you selected is completely full (30 households) — an admin will "
+                    "follow up to find another way to get you food.",
+                    "error",
+                )
+            else:
+                flash(
+                    "All pickup times are currently full (30 households each) — an admin will "
+                    "follow up to assign you a time slot.",
+                    "error",
+                )
 
         email_sent = False
         if email:

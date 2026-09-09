@@ -24,4 +24,23 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Start with one empty member row so the form doesn't look empty.
   addRow();
+
+  // Someone who can only make their 1st choice time doesn't need a 2nd/3rd
+  // -- hide those selects and clear them so a stale leftover value from
+  // before checking the box never gets submitted alongside it.
+  var onlyOneCheckbox = document.getElementById("only_one_timeslot");
+  var pref23Group = document.getElementById("pref-2-3-group");
+  if (onlyOneCheckbox && pref23Group) {
+    function syncOnlyOneTimeslot() {
+      var only = onlyOneCheckbox.checked;
+      pref23Group.hidden = only;
+      if (only) {
+        pref23Group.querySelectorAll("select").forEach(function (select) {
+          select.value = "";
+        });
+      }
+    }
+    onlyOneCheckbox.addEventListener("change", syncOnlyOneTimeslot);
+    syncOnlyOneTimeslot();
+  }
 });

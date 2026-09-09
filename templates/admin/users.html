@@ -60,16 +60,19 @@
     </form>
   </div>
 
-  <div class="card">
-    <h2>Invite a New Admin</h2>
-    <p class="hint">
-      They'll get an email with a one-time link to set their own password and create their account.
-      The link expires in {{ invite_valid_hours }} hours.
-    </p>
-    <form method="post">
-      <label for="email">Email</label>
-      <input type="email" id="email" name="email" required autofocus>
-      <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Send Invite</button>
-    </form>
-  </div>
+  {% if current_admin.is_super_admin %}
+    <div class="card">
+      <h2>Invite a New Admin</h2>
+      <p class="hint">
+        They'll get an email with a one-time link to set their own password and create their account.
+        The link expires in {{ invite_valid_hours }} hours. Only a super admin can send these.
+      </p>
+      <form method="post">
+        <input type="hidden" name="action" value="invite">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required autofocus>
+        <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Send Invite</button>
+      </form>
+    </div>
+  {% endif %}
 {% endblock %}
