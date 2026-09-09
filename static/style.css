@@ -600,13 +600,33 @@ th {
 
 .admins-table th,
 .admins-table td {
-  width: 20%;
+  width: 16%;
+}
+
+/* The action column holds up to 3 buttons ("Edit", "Make/Remove Super
+   Admin", "Remove") -- wider than an even 1/5 split would give it, so a
+   full row doesn't wrap into a ragged multi-line stack. */
+.admins-table th:last-child,
+.admins-table td:last-child {
+  width: 36%;
 }
 
 .admins-table .ellipsis-cell {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-actions form {
+  display: inline;
 }
 
 /* The Grant Report table's columns are short, mostly-numeric counts --
