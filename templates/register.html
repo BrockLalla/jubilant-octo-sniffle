@@ -40,6 +40,14 @@
       <h2>Preferred Pickup Times</h2>
       <p class="hint">Pick up to 3 weekly time slots that work for you. We'll assign whichever is least busy.</p>
 
+      <label class="checkbox-label">
+        <input type="checkbox" id="only_one_timeslot" name="only_one_timeslot" value="1" {% if form.get('only_one_timeslot') %}checked{% endif %}>
+        I can only make a specific time
+      </label>
+      <p class="hint" id="only-one-timeslot-hint">
+        Instead of picking a 2nd and 3rd choice, we'll hold your spot at this exact time.
+      </p>
+
       <label for="pref1_timeslot_id">1st Choice</label>
       <select id="pref1_timeslot_id" name="pref1_timeslot_id">
         <option value="">-- Select a time --</option>
@@ -47,15 +55,6 @@
           <option value="{{ t.id }}" {% if form.get('pref1_timeslot_id')|string == t.id|string %}selected{% endif %}>{{ t.label }}</option>
         {% endfor %}
       </select>
-
-      <label class="checkbox-label">
-        <input type="checkbox" id="only_one_timeslot" name="only_one_timeslot" value="1" {% if form.get('only_one_timeslot') %}checked{% endif %}>
-        I can only make this one time (e.g. due to a work schedule)
-      </label>
-      <p class="hint" id="only-one-timeslot-hint">
-        Instead of picking a 2nd and 3rd choice, we'll hold you a spot in this exact time whenever there's
-        room (up to 30 households) instead of moving you to a busier or quieter slot.
-      </p>
 
       <div id="pref-2-3-group">
         <label for="pref2_timeslot_id">2nd Choice</label>
