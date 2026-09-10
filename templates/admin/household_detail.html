@@ -11,10 +11,11 @@
     {{ household.household_code }} &middot; Registered {{ household.created_at[:10] }}
     &nbsp; {{ macros.status_badge(members|length) }}
   </p>
+  <button type="submit" form="household-info-form" class="btn btn-primary">Save Household Info</button>
 
   <div class="card">
     <h2>Household Info</h2>
-    <form method="post">
+    <form method="post" id="household-info-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="update_household">
       <label>First Name</label>
@@ -67,8 +68,6 @@
         <input type="checkbox" name="designate_id_verified" value="1" {% if household.designate_id_verified %}checked{% endif %}>
         Government ID Checked
       </label>
-
-      <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Save Household Info</button>
     </form>
   </div>
 
@@ -133,6 +132,8 @@
       </label>
       <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Add Member</button>
     </form>
+
+    <button type="submit" form="household-info-form" class="btn btn-primary" style="margin-top:1.5rem;">Save Household Info</button>
   </div>
 
   <div class="card" style="border-color:#e8a29c;">
