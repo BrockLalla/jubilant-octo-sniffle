@@ -850,14 +850,39 @@ def update_household(household_id, primary_first_name, primary_last_name, phone,
         conn.close()
 
 
+def _household_has_member_under_2(conn, household_id):
+    rows = conn.execute(
+        "SELECT date_of_birth FROM members WHERE household_id = ? AND date_of_birth IS NOT NULL",
+        (household_id,),
+    ).fetchall()
+    return any(age_in_years(r["date_of_birth"]) < 2 for r in rows)
+
+
+def _recompute_needs_diapers(conn, household_id):
+    """needs_diapers auto-tracks whether the household currently has any
+    member under 2 -- cleared once the youngest child ages past 2, and
+    restored if a new child under 2 is added, so it can't go stale after a
+    membership edit. Called from every place members change (add/update/
+    delete below); must run on the same connection as that change so it
+    sees it before commit."""
+    has_young_child = _household_has_member_under_2(conn, household_id)
+    conn.execute(
+        "UPDATE households SET needs_diapers = ? WHERE id = ?",
+        (1 if has_young_child else 0, household_id),
+    )
+
+
 def update_member(member_id, first_name, last_name, date_of_birth, relationship, id_verified=False):
     conn = get_db()
     try:
+        row = conn.execute("SELECT household_id FROM members WHERE id = ?", (member_id,)).fetchone()
         conn.execute(
             "UPDATE members SET first_name = ?, last_name = ?, date_of_birth = ?, relationship = ?, "
             "id_verified = ? WHERE id = ?",
             (first_name, last_name, date_of_birth or None, relationship, 1 if id_verified else 0, member_id),
         )
+        if row:
+            _recompute_needs_diapers(conn, row["household_id"])
         conn.commit()
     finally:
         conn.close()
@@ -866,7 +891,10 @@ def update_member(member_id, first_name, last_name, date_of_birth, relationship,
 def delete_member(member_id):
     conn = get_db()
     try:
+        row = conn.execute("SELECT household_id FROM members WHERE id = ?", (member_id,)).fetchone()
         conn.execute("DELETE FROM members WHERE id = ?", (member_id,))
+        if row:
+            _recompute_needs_diapers(conn, row["household_id"])
         conn.commit()
     finally:
         conn.close()
@@ -930,6 +958,7 @@ def add_member(household_id, first_name, last_name, date_of_birth, relationship,
             "UPDATE members SET member_code = ? WHERE id = ?",
             (f"M-{member_id:05d}", member_id),
         )
+        _recompute_needs_diapers(conn, household_id)
         conn.commit()
         return member_id
     finally:
