@@ -252,17 +252,20 @@ def register():
         household = data["household"]
 
         if filled_prefs and not household["assigned_timeslot_id"]:
+            # Registration already succeeded above regardless -- only the
+            # requested pickup time is full. "warning" (not "error") so this
+            # doesn't read as a rejection right next to the success banner.
             if only_one_timeslot:
                 flash(
-                    "The one time you selected is completely full (30 households) — an admin will "
-                    "follow up to find another way to get you food.",
-                    "error",
+                    "You're registered, but the one time you selected is completely full (30 "
+                    "households) — an admin will follow up to find another way to get you food.",
+                    "warning",
                 )
             else:
                 flash(
-                    "All pickup times are currently full (30 households each) — an admin will "
-                    "follow up to assign you a time slot.",
-                    "error",
+                    "You're registered, but all pickup times are currently full (30 households "
+                    "each) — an admin will follow up to assign you a time slot.",
+                    "warning",
                 )
 
         email_sent = False
