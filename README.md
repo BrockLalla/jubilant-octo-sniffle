@@ -46,6 +46,17 @@ nothing leaves the building.
 > old/rebuilt copy from before this version — replace it with the current `Pantry Tracker.app`,
 > which only lives in the menu bar and never does this.
 
+### If this is the cloud-hosted (Render) deployment instead
+
+Everything above still applies, with one difference: since the cloud deployment is
+reachable from the open internet rather than just church WiFi, Check-In and Registration
+require a private access link rather than being open to anyone who finds the URL. Get the
+current links from **Admin → Settings → Volunteer Access Links** and use those (instead of
+the `.local`/numeric address below) when bookmarking a volunteer device — everything else,
+including "Add to Home Screen," works the same way. If a link is ever shared somewhere it
+shouldn't be, rotate it from that same settings page; every previously bookmarked device
+will need to reopen the new link once.
+
 ### Setting up a volunteer's tablet or phone (one-time per device)
 
 1. Make sure the device is on the same WiFi as the church computer running the app.

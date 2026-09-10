@@ -73,5 +73,27 @@
     </form>
   </div>
 
+  {% if checkin_url %}
+  <div class="card">
+    <h2>Volunteer Access Links</h2>
+    <p class="hint">
+      Check-in and registration require this link — have each volunteer device open it once and
+      bookmark it; after that it stays remembered on that device. Rotating the link immediately breaks
+      every previously bookmarked link (do this if a link is ever shared somewhere it shouldn't be).
+    </p>
+    <label for="checkin_url">Check-In Link</label>
+    <input type="text" id="checkin_url" value="{{ checkin_url }}" readonly onclick="this.select();">
+
+    <label for="register_url">Registration Link</label>
+    <input type="text" id="register_url" value="{{ register_url }}" readonly onclick="this.select();">
+
+    <form method="post" style="margin-top:1rem;"
+          onsubmit="return confirm('This immediately breaks every volunteer device\'s bookmarked link until they reopen the new one. Continue?');">
+      <input type="hidden" name="action" value="rotate_volunteer_token">
+      <button type="submit" class="btn btn-secondary">Rotate Volunteer Link</button>
+    </form>
+  </div>
+  {% endif %}
+
   <script src="{{ url_for('static', filename='email_editor.js') }}"></script>
 {% endblock %}

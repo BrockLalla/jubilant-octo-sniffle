@@ -36,6 +36,15 @@ def get_data_dir():
     return base
 
 
+def is_cloud_deployment():
+    """True when running on Render (or anywhere DATA_DIR is set), false for
+    the local Mac app. Used to gate behavior that only makes sense once the
+    app is reachable from the open internet rather than just church WiFi --
+    e.g. requiring a volunteer access token, which would just be unwanted
+    friction on a LAN-only deployment where the WiFi itself is the boundary."""
+    return bool(os.environ.get("DATA_DIR"))
+
+
 DB_PATH = os.path.join(get_data_dir(), "pantry.db")
 SECRET_KEY_PATH = os.path.join(get_data_dir(), "secret.txt")
 
@@ -1716,6 +1725,24 @@ def set_setting(key, value):
         conn.commit()
     finally:
         conn.close()
+
+
+def get_or_create_volunteer_access_token():
+    """The shared secret volunteers' bookmarked check-in/registration links
+    carry as ?t=... -- generated once on first use and stored like any other
+    setting, so it survives restarts and is visible/rotatable from
+    /admin/settings without a redeploy."""
+    token = get_setting("volunteer_access_token")
+    if not token:
+        token = secrets.token_urlsafe(24)
+        set_setting("volunteer_access_token", token)
+    return token
+
+
+def rotate_volunteer_access_token():
+    token = secrets.token_urlsafe(24)
+    set_setting("volunteer_access_token", token)
+    return token
 
 
 def get_settings_dict(keys):

@@ -1,12 +1,71 @@
 import datetime
+import hmac
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, current_app
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 import db
 import emailer
 from netinfo import get_lan_ip, get_local_hostname
 
 bp = Blueprint("public", __name__)
+
+ACCESS_COOKIE = "pantry_access"
+ACCESS_COOKIE_MAX_AGE = 60 * 60 * 24 * 365  # 1 year
+# Registration and check-in are the only routes a volunteer's bookmarked
+# device needs -- everything else is either public (the homepage) or
+# already behind its own login (/admin/*).
+GATED_ENDPOINTS = {"public.register", "public.checkin", "public.checkin_confirm", "public.checkin_do"}
+
+
+def _access_serializer():
+    return URLSafeTimedSerializer(current_app.secret_key, salt="volunteer-access")
+
+
+@bp.before_request
+def _require_volunteer_access():
+    # Only enforced on the cloud deployment, which is reachable from the
+    # open internet. Locally, the church WiFi network is already the access
+    # boundary volunteer devices sit behind, so this would just be friction
+    # with no real security benefit -- and would break the existing
+    # bookmark-the-.local-address onboarding flow (see README.md).
+    if not db.is_cloud_deployment():
+        return None
+    if request.endpoint not in GATED_ENDPOINTS:
+        return None
+
+    current_token = db.get_or_create_volunteer_access_token()
+
+    cookie_val = request.cookies.get(ACCESS_COOKIE)
+    if cookie_val:
+        try:
+            token_in_cookie = _access_serializer().loads(cookie_val, max_age=ACCESS_COOKIE_MAX_AGE)
+        except (BadSignature, SignatureExpired):
+            token_in_cookie = None
+        # Compared against the *current* token, not just a valid signature,
+        # so rotating it in /admin/settings immediately invalidates every
+        # previously-issued cookie without any separate epoch/versioning.
+        if token_in_cookie and hmac.compare_digest(token_in_cookie, current_token):
+            return None
+
+    supplied = request.args.get("t", "")
+    if supplied and hmac.compare_digest(supplied, current_token):
+        # Redirect to the same path with the token stripped out of the URL
+        # (so it doesn't linger in browser history/screenshots) and hand
+        # back a long-lived signed cookie that covers this whole group of
+        # routes from here on.
+        resp = redirect(request.path)
+        resp.set_cookie(
+            ACCESS_COOKIE,
+            _access_serializer().dumps(current_token),
+            max_age=ACCESS_COOKIE_MAX_AGE,
+            httponly=True,
+            secure=request.is_secure,
+            samesite="Lax",
+        )
+        return resp
+
+    return render_template("access_denied.html"), 403
 
 
 @bp.route("/")

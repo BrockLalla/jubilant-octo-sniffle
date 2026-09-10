@@ -644,6 +644,9 @@ def settings():
                     flash(str(e), "error")
                 except Exception as e:
                     flash(f"Couldn't send sample email: {e}", "error")
+        elif action == "rotate_volunteer_token":
+            db.rotate_volunteer_access_token()
+            flash("Volunteer access link rotated — bookmarks with the old link will stop working.", "success")
         return redirect(url_for("admin.settings"))
 
     cfg = db.get_settings_dict(
@@ -651,7 +654,12 @@ def settings():
     )
     cfg["email_subject"] = cfg.get("email_subject") or emailer.DEFAULT_EMAIL_SUBJECT
     cfg["email_body"] = emailer.ensure_html_body(cfg.get("email_body") or emailer.DEFAULT_EMAIL_BODY)
-    return render_template("admin/settings.html", cfg=cfg)
+    checkin_url = register_url = None
+    if db.is_cloud_deployment():
+        volunteer_token = db.get_or_create_volunteer_access_token()
+        checkin_url = external_url(url_for("public.checkin")) + f"?t={volunteer_token}"
+        register_url = external_url(url_for("public.register")) + f"?t={volunteer_token}"
+    return render_template("admin/settings.html", cfg=cfg, checkin_url=checkin_url, register_url=register_url)
 
 
 @bp.route("/visits")

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Access Needed{% endblock %}
+{% block content %}
+  <div class="card" style="text-align:center;">
+    <h1>Access Needed</h1>
+    <p class="subtitle">
+      This page is only for pantry volunteers with a bookmarked check-in or registration link.
+      Ask your pantry admin for that link, or head back to the home page.
+    </p>
+    <a class="btn btn-secondary" href="{{ url_for('public.index') }}">Back to Home</a>
+  </div>
+{% endblock %}
