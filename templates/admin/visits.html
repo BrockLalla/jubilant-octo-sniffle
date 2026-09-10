@@ -17,6 +17,10 @@
     </div>
   </form>
 
+  {% if defaulted_range %}
+    <p class="hint">Showing the most recent 7 days only, to keep this page fast — set an earlier start date above to see more.</p>
+  {% endif %}
+
   <a class="btn btn-secondary" href="{{ url_for('admin.export_visits', start_date=start_date, end_date=end_date) }}">⬇️ Download This List as CSV</a>
 
   <div class="table-scroll">

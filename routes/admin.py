@@ -721,10 +721,20 @@ def visits():
     else:
         # Default view: most recent pickups first.
         sort, direction = "date", "desc"
+
+    # An unbounded query against a visits table that only ever grows got
+    # slow to load (and slow to redirect back to after deleting one) --
+    # default to the most recent week so the common case (checking recent
+    # pickups, fixing a mistaken entry) stays fast. Typing an earlier date
+    # into the filter above still overrides this.
+    defaulted_range = not start_date and not end_date
+    if defaulted_range:
+        start_date = (datetime.date.today() - datetime.timedelta(days=7)).isoformat()
+
     rows = db.list_visits(start_date, end_date, sort=sort, direction=direction)
     return render_template(
         "admin/visits.html", rows=rows, start_date=start_date or "", end_date=end_date or "",
-        sort=sort, direction=direction,
+        sort=sort, direction=direction, defaulted_range=defaulted_range,
     )
 
 
