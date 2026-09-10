@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Admins{% endblock %}
+{% block title %}Admin Settings{% endblock %}
 {% block page_class %}page-wide{% endblock %}
 {% block content %}
   {% set active = 'users' %}
   {% include "admin/_nav.html" %}
-  <h1>Admins</h1>
+  <h1>Admin Settings</h1>
   <p class="subtitle">Everyone with full access to household and visit records.</p>
 
   <div class="table-scroll">
@@ -80,5 +80,28 @@
         <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Send Invite</button>
       </form>
     </div>
+  {% endif %}
+
+  {% if volunteer_url %}
+  <div class="card">
+    <h2>Volunteer Access Link</h2>
+    <p class="hint">
+      Check-in and registration both require this link — have each volunteer device open it once and
+      bookmark it; after that it stays remembered on that device and works for both. Rotating the link
+      immediately breaks every previously bookmarked link (do this if it's ever shared somewhere it
+      shouldn't be).
+    </p>
+    <label for="volunteer_url">Volunteer Link</label>
+    <input type="text" id="volunteer_url" value="{{ volunteer_url }}" readonly onclick="this.select();">
+
+    {% if current_admin.is_super_admin %}
+      <form method="post" style="margin-top:1rem;"
+            onsubmit="return confirm('This immediately breaks every volunteer device\'s bookmarked link until they reopen the new one. Continue?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="rotate_volunteer_token">
+        <button type="submit" class="btn btn-secondary">Rotate Volunteer Link</button>
+      </form>
+    {% endif %}
+  </div>
   {% endif %}
 {% endblock %}

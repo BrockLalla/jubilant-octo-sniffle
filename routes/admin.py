@@ -341,13 +341,28 @@ def users():
                     flash(str(e), "error")
                 except Exception as e:
                     flash(f"Couldn't send invite email: {e}", "error")
+        elif action == "rotate_volunteer_token":
+            if not current_admin["is_super_admin"]:
+                flash("Only a super admin can rotate the volunteer access link.", "error")
+            else:
+                db.rotate_volunteer_access_token()
+                db.log_audit_event(
+                    current_admin["username"], "volunteer_token_rotated", ip_address=request.remote_addr,
+                )
+                flash("Volunteer access link rotated — bookmarks with the old link will stop working.", "success")
         return redirect(url_for("admin.users"))
+
+    volunteer_url = None
+    if db.is_cloud_deployment():
+        volunteer_token = db.get_or_create_volunteer_access_token()
+        volunteer_url = external_url(url_for("public.index")) + f"?t={volunteer_token}"
 
     return render_template(
         "admin/users.html",
         admins=db.list_admin_users(),
         invite_valid_hours=db.INVITE_VALID_HOURS,
         current_admin=current_admin,
+        volunteer_url=volunteer_url,
     )
 
 
@@ -685,10 +700,6 @@ def settings():
                     flash(str(e), "error")
                 except Exception as e:
                     flash(f"Couldn't send sample email: {e}", "error")
-        elif action == "rotate_volunteer_token":
-            db.rotate_volunteer_access_token()
-            db.log_audit_event(session.get("admin_username"), "volunteer_token_rotated", ip_address=request.remote_addr)
-            flash("Volunteer access link rotated — bookmarks with the old link will stop working.", "success")
         return redirect(url_for("admin.settings"))
 
     cfg = db.get_settings_dict(
@@ -696,12 +707,7 @@ def settings():
     )
     cfg["email_subject"] = cfg.get("email_subject") or emailer.DEFAULT_EMAIL_SUBJECT
     cfg["email_body"] = emailer.ensure_html_body(cfg.get("email_body") or emailer.DEFAULT_EMAIL_BODY)
-    checkin_url = register_url = None
-    if db.is_cloud_deployment():
-        volunteer_token = db.get_or_create_volunteer_access_token()
-        checkin_url = external_url(url_for("public.checkin")) + f"?t={volunteer_token}"
-        register_url = external_url(url_for("public.register")) + f"?t={volunteer_token}"
-    return render_template("admin/settings.html", cfg=cfg, checkin_url=checkin_url, register_url=register_url)
+    return render_template("admin/settings.html", cfg=cfg)
 
 
 @bp.route("/visits")

@@ -31,23 +31,13 @@ def _require_volunteer_access():
     # bookmark-the-.local-address onboarding flow (see README.md).
     if not db.is_cloud_deployment():
         return None
-    if request.endpoint not in GATED_ENDPOINTS:
-        return None
 
     current_token = db.get_or_create_volunteer_access_token()
 
-    cookie_val = request.cookies.get(ACCESS_COOKIE)
-    if cookie_val:
-        try:
-            token_in_cookie = _access_serializer().loads(cookie_val, max_age=ACCESS_COOKIE_MAX_AGE)
-        except (BadSignature, SignatureExpired):
-            token_in_cookie = None
-        # Compared against the *current* token, not just a valid signature,
-        # so rotating it in /admin/settings immediately invalidates every
-        # previously-issued cookie without any separate epoch/versioning.
-        if token_in_cookie and hmac.compare_digest(token_in_cookie, current_token):
-            return None
-
+    # A valid token in the query string is honored on ANY route (not just
+    # the gated ones) so a single bookmarked link -- the homepage, where a
+    # volunteer picks Check-In or Register -- unlocks every gated route at
+    # once, instead of needing a separate link per page.
     supplied = request.args.get("t", "")
     if supplied and hmac.compare_digest(supplied, current_token):
         # Redirect to the same path with the token stripped out of the URL
@@ -64,6 +54,21 @@ def _require_volunteer_access():
             samesite="Lax",
         )
         return resp
+
+    if request.endpoint not in GATED_ENDPOINTS:
+        return None
+
+    cookie_val = request.cookies.get(ACCESS_COOKIE)
+    if cookie_val:
+        try:
+            token_in_cookie = _access_serializer().loads(cookie_val, max_age=ACCESS_COOKIE_MAX_AGE)
+        except (BadSignature, SignatureExpired):
+            token_in_cookie = None
+        # Compared against the *current* token, not just a valid signature,
+        # so rotating it in /admin/settings immediately invalidates every
+        # previously-issued cookie without any separate epoch/versioning.
+        if token_in_cookie and hmac.compare_digest(token_in_cookie, current_token):
+            return None
 
     return render_template("access_denied.html"), 403
 
