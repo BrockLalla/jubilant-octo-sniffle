@@ -1,18 +1,18 @@
 {% extends "base.html" %}
 {% block title %}Admin Setup{% endblock %}
 {% block content %}
-  <h1>Set Up This Computer</h1>
+  <h1>Set Up Pantry Tracker</h1>
   <p class="subtitle">
-    This computer doesn't have any data yet. Each computer keeps its own local copy, so if you already
-    use Pantry Tracker elsewhere, restore your data below instead of starting fresh.
+    This installation doesn't have any data yet. If you're already using Pantry Tracker elsewhere,
+    restore your data below instead of starting fresh.
   </p>
 
   <div class="card">
     <h2>Already Using Pantry Tracker Elsewhere?</h2>
     <p class="hint">
-      Restore a backup from your other computer (Admin &rarr; Backup &amp; Restore &rarr; Download Database
-      Backup there first, if you haven't already). This brings over your existing admin login along with
-      all your household and visit data, so you can skip creating a new account below.
+      Restore a backup from wherever you already have data (Admin &rarr; Backup &amp; Restore &rarr;
+      Download Database Backup there first, if you haven't already). This brings over your existing admin
+      login along with all your household and visit data, so you can skip creating a new account below.
     </p>
     <form method="post" enctype="multipart/form-data"
           onsubmit="return confirm('This will set up this computer with the uploaded backup. Continue?');">
