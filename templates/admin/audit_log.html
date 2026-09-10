@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Audit Log{% endblock %}
+{% block content %}
+  {% set active = 'audit_log' %}
+  {% include "admin/_nav.html" %}
+  <h1>Audit Log</h1>
+  <p class="subtitle">Security-relevant admin actions — logins, password changes, admin management, and data restores. Most recent 200 shown.</p>
+
+  <div class="table-scroll">
+    <table>
+      <tr>
+        <th>When</th>
+        <th>Actor</th>
+        <th>Action</th>
+        <th>Detail</th>
+        <th>IP Address</th>
+      </tr>
+      {% for r in rows %}
+        <tr>
+          <td style="white-space:nowrap;">{{ r.created_at }}</td>
+          <td>{{ r.actor or '—' }}</td>
+          <td>{{ r.action }}</td>
+          <td>{{ r.detail or '' }}</td>
+          <td>{{ r.ip_address or '' }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% if not rows %}
+    <p class="muted">No audit events recorded yet.</p>
+  {% endif %}
+{% endblock %}

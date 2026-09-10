@@ -10,5 +10,6 @@
   <a href="{{ url_for('admin.settings') }}" class="{{ 'active' if active == 'settings' else '' }}">Email Settings</a>
   <a href="{{ url_for('admin.backup') }}" class="{{ 'active' if active == 'backup' else '' }}">Backup &amp; Restore</a>
   <a href="{{ url_for('admin.users') }}" class="{{ 'active' if active == 'users' else '' }}">Admins</a>
+  <a href="{{ url_for('admin.audit_log') }}" class="{{ 'active' if active == 'audit_log' else '' }}">Audit Log</a>
   <a href="{{ url_for('admin.logout') }}">Log Out</a>
 </div>

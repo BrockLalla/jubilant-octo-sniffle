@@ -84,6 +84,8 @@ def setup():
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
 
+        db.log_audit_event(None, "database_restored_via_setup", ip_address=request.remote_addr)
+
         if db.admin_user_count() == 0:
             flash(
                 "That backup was restored, but it doesn't contain any admin accounts -- "
@@ -114,6 +116,7 @@ def setup():
 
         try:
             db.create_admin_user(username, generate_password_hash(password, method="pbkdf2:sha256"))
+            db.log_audit_event(username, "initial_admin_created", ip_address=request.remote_addr)
         except sqlite3.IntegrityError:
             # Most likely cause: the form was submitted twice (e.g. a slow
             # double-click, or a page reload after already succeeding) --
@@ -146,7 +149,9 @@ def login():
         if user and check_password_hash(user["password_hash"], password):
             session.clear()
             session["admin_username"] = user["username"]
+            db.log_audit_event(user["username"], "login_success", ip_address=request.remote_addr)
             return redirect(url_for("admin.dashboard"))
+        db.log_audit_event(identifier or None, "login_failure", ip_address=request.remote_addr)
         flash("Incorrect username/email or password.", "error")
 
     return render_template("admin/login.html")
@@ -201,6 +206,11 @@ def reset_password(token):
 
         db.update_admin_password(reset["admin_user_id"], generate_password_hash(password, method="pbkdf2:sha256"))
         db.mark_password_reset_used(reset["id"])
+        reset_user = db.get_admin_user_by_id(reset["admin_user_id"])
+        db.log_audit_event(
+            reset_user["username"] if reset_user else None, "password_reset_completed",
+            ip_address=request.remote_addr,
+        )
         flash("Password updated. Please log in.", "success")
         return redirect(url_for("admin.login"))
 
@@ -269,10 +279,17 @@ def users():
                 target_id = int(request.form.get("admin_id"))
                 if target_id == current_admin["id"]:
                     flash("You can't remove your own account. Have another super admin do it instead.", "error")
-                elif db.delete_admin_user(target_id):
-                    flash("Admin account removed.", "success")
                 else:
-                    flash("Can't remove the last remaining admin account.", "error")
+                    target = db.get_admin_user_by_id(target_id)
+                    if db.delete_admin_user(target_id):
+                        db.log_audit_event(
+                            current_admin["username"], "admin_deleted",
+                            detail=target["username"] if target else str(target_id),
+                            ip_address=request.remote_addr,
+                        )
+                        flash("Admin account removed.", "success")
+                    else:
+                        flash("Can't remove the last remaining admin account.", "error")
         elif action == "toggle_super":
             if not current_admin["is_super_admin"]:
                 flash("Only a super admin can grant or remove super admin access.", "error")
@@ -282,6 +299,11 @@ def users():
                 if target:
                     new_status = not target["is_super_admin"]
                     if db.set_admin_super(target_id, new_status):
+                        db.log_audit_event(
+                            current_admin["username"], "super_admin_toggled",
+                            detail=f"{target['username']} -> {'super' if new_status else 'admin'}",
+                            ip_address=request.remote_addr,
+                        )
                         flash(
                             f"{target['username']} is {'now' if new_status else 'no longer'} a super admin.",
                             "success",
@@ -306,6 +328,9 @@ def users():
                 invite_link = external_url(url_for("admin.accept_invite", token=token))
                 try:
                     emailer.send_admin_invite_email(email, invite_link, session.get("admin_username"))
+                    db.log_audit_event(
+                        current_admin["username"], "admin_invited", detail=email, ip_address=request.remote_addr,
+                    )
                     flash(f"Invite sent to {email}.", "success")
                 except emailer.EmailNotConfigured as e:
                     flash(str(e), "error")
@@ -362,6 +387,15 @@ def edit_admin_user(admin_id):
         db.update_admin_username(target["id"], username)
         if password:
             db.update_admin_password(target["id"], generate_password_hash(password, method="pbkdf2:sha256"))
+            db.log_audit_event(
+                current_admin["username"], "password_changed", detail=f"for {username}",
+                ip_address=request.remote_addr,
+            )
+        if username != target["username"]:
+            db.log_audit_event(
+                current_admin["username"], "username_changed", detail=f"{target['username']} -> {username}",
+                ip_address=request.remote_addr,
+            )
         if editing_self:
             session["admin_username"] = username
         flash("Account updated." if editing_self else f"{username}'s account has been updated.", "success")
@@ -396,6 +430,7 @@ def accept_invite(token):
             invite["email"], generate_password_hash(password, method="pbkdf2:sha256"), email=invite["email"]
         )
         db.mark_admin_invite_used(invite["id"])
+        db.log_audit_event(invite["email"], "admin_account_created_via_invite", ip_address=request.remote_addr)
         flash("Account created. Please log in.", "success")
         return redirect(url_for("admin.login"))
 
@@ -623,6 +658,7 @@ def settings():
                 db.set_setting("smtp_password", new_password)
             db.set_setting("from_name", request.form.get("from_name", "").strip())
             db.set_setting("admin_notify_email", request.form.get("admin_notify_email", "").strip())
+            db.log_audit_event(session.get("admin_username"), "smtp_settings_updated", ip_address=request.remote_addr)
             flash("Email settings saved.", "success")
         elif action == "save_template":
             db.set_setting("email_subject", request.form.get("email_subject", "").strip() or emailer.DEFAULT_EMAIL_SUBJECT)
@@ -646,6 +682,7 @@ def settings():
                     flash(f"Couldn't send sample email: {e}", "error")
         elif action == "rotate_volunteer_token":
             db.rotate_volunteer_access_token()
+            db.log_audit_event(session.get("admin_username"), "volunteer_token_rotated", ip_address=request.remote_addr)
             flash("Volunteer access link rotated — bookmarks with the old link will stop working.", "success")
         return redirect(url_for("admin.settings"))
 
@@ -796,6 +833,16 @@ def backup():
     return render_template("admin/backup.html")
 
 
+@bp.route("/audit-log")
+@login_required
+def audit_log():
+    current_admin = db.get_admin_user(session.get("admin_username"))
+    if not current_admin["is_super_admin"]:
+        flash("Only a super admin can view the audit log.", "error")
+        return redirect(url_for("admin.dashboard"))
+    return render_template("admin/audit_log.html", rows=db.list_audit_log())
+
+
 @bp.route("/backup/export")
 @login_required
 def backup_export():
@@ -823,6 +870,8 @@ def backup_import():
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+    db.log_audit_event(session.get("admin_username"), "database_restored", ip_address=request.remote_addr)
 
     flash(
         f"Database restored from the uploaded backup. Your previous data was saved to "

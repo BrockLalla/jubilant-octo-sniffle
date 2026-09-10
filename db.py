@@ -195,11 +195,21 @@ def init_db():
             created_at TEXT NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            actor TEXT,
+            action TEXT NOT NULL,
+            detail TEXT,
+            ip_address TEXT,
+            created_at TEXT NOT NULL
+        );
+
         CREATE INDEX IF NOT EXISTS idx_members_household ON members(household_id);
         CREATE INDEX IF NOT EXISTS idx_visits_household ON visits(household_id);
         CREATE INDEX IF NOT EXISTS idx_visits_date ON visits(visit_date);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_visits_household_date ON visits(household_id, visit_date);
         CREATE INDEX IF NOT EXISTS idx_households_assigned_timeslot ON households(assigned_timeslot_id);
+        CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at);
         """
     )
     _ensure_columns(conn, "households", {
@@ -1743,6 +1753,30 @@ def rotate_volunteer_access_token():
     token = secrets.token_urlsafe(24)
     set_setting("volunteer_access_token", token)
     return token
+
+
+# ---------- Audit log (security-relevant admin actions) ----------
+
+def log_audit_event(actor, action, detail=None, ip_address=None):
+    conn = get_db()
+    try:
+        conn.execute(
+            "INSERT INTO audit_log (actor, action, detail, ip_address, created_at) VALUES (?, ?, ?, ?, ?)",
+            (actor, action, detail, ip_address, now_iso()),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def list_audit_log(limit=200):
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT * FROM audit_log ORDER BY id DESC LIMIT ?", (limit,)
+        ).fetchall()
+    finally:
+        conn.close()
 
 
 def get_settings_dict(keys):
