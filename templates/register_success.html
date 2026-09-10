@@ -25,12 +25,11 @@
       &nbsp; {{ macros.status_badge(members|length) }}
     </p>
     <table>
-      <tr><th>Name</th><th>Relationship</th><th>Member ID</th></tr>
+      <tr><th>Name</th><th>Relationship</th></tr>
       {% for m in members %}
         <tr>
           <td>{{ m.name }}</td>
           <td>{{ m.relationship }}</td>
-          <td>{{ m.member_code }}</td>
         </tr>
       {% endfor %}
     </table>
