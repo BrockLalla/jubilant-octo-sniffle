@@ -17,4 +17,14 @@
     <h2>🔒 Admin Dashboard</h2>
     <p>View records, visit history, and export reports</p>
   </a>
+
+  <div class="card" style="text-align:center;">
+    <h2>📌 Save This Page</h2>
+    <p>Bookmark this page (or add it to your home screen) so you can get back to Check-In and
+      Registration in one tap next time.</p>
+    <button type="button" class="btn btn-secondary" onclick="showBookmarkInstructions()">How Do I Bookmark This?</button>
+    <p id="bookmark-instructions" class="hint" hidden style="margin-top:1rem;"></p>
+  </div>
+
+  <script src="{{ url_for('static', filename='bookmark_help.js') }}"></script>
 {% endblock %}
