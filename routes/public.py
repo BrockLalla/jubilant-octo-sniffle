@@ -1,7 +1,7 @@
 import datetime
 import hmac
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, current_app, g
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 import db
@@ -40,20 +40,17 @@ def _require_volunteer_access():
     # once, instead of needing a separate link per page.
     supplied = request.args.get("t", "")
     if supplied and hmac.compare_digest(supplied, current_token):
-        # Redirect to the same path with the token stripped out of the URL
-        # (so it doesn't linger in browser history/screenshots) and hand
-        # back a long-lived signed cookie that covers this whole group of
-        # routes from here on.
-        resp = redirect(request.path)
-        resp.set_cookie(
-            ACCESS_COOKIE,
-            _access_serializer().dumps(current_token),
-            max_age=ACCESS_COOKIE_MAX_AGE,
-            httponly=True,
-            secure=request.is_secure,
-            samesite="Lax",
-        )
-        return resp
+        # Deliberately NOT redirecting to strip ?t=... from the address bar:
+        # the whole point of this link is that it's what volunteers
+        # bookmark/"Add to Home Screen." A redirect would mean whatever gets
+        # bookmarked is the bare, token-less URL -- which then 403s on every
+        # future visit. Instead just let the request through normally (the
+        # token in the URL keeps working forever) and refresh the cookie
+        # alongside it via after_request, as a fallback that also covers
+        # routes reached without the token still attached (e.g. following a
+        # link from the homepage to /checkin).
+        g.volunteer_access_granted = True
+        return None
 
     if request.endpoint not in GATED_ENDPOINTS:
         return None
@@ -71,6 +68,20 @@ def _require_volunteer_access():
             return None
 
     return render_template("access_denied.html"), 403
+
+
+@bp.after_request
+def _refresh_volunteer_access_cookie(response):
+    if getattr(g, "volunteer_access_granted", False):
+        response.set_cookie(
+            ACCESS_COOKIE,
+            _access_serializer().dumps(db.get_or_create_volunteer_access_token()),
+            max_age=ACCESS_COOKIE_MAX_AGE,
+            httponly=True,
+            secure=request.is_secure,
+            samesite="Lax",
+        )
+    return response
 
 
 @bp.route("/")
