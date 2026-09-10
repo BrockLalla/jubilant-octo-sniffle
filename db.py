@@ -447,20 +447,12 @@ def assign_timeslot(conn, pref_ids):
 def assign_mandatory_timeslot(conn, timeslot_id):
     """For a household that can only make ONE specific time (e.g. a fixed
     work schedule) rather than picking from a ranked list of preferences.
-    Unlike assign_timeslot(), this never redirects to a different slot just
-    because the admin-editable soft buffer (get_timeslot_active_capacity())
-    is reached -- it checks against the true physical/staffing capacity
-    (TIMESLOT_CAPACITY) instead, so a household that genuinely has no other
-    option still gets placed here whenever there's real room. Returns
-    timeslot_id if there was room, or None if that slot is truly full (at
-    which point there's no time this household can attend, and it's
-    correctly left unassigned for a person to follow up rather than
-    silently placed somewhere they can't come to)."""
-    if not timeslot_id:
-        return None
-    if _timeslot_active_count(conn, timeslot_id) >= TIMESLOT_CAPACITY:
-        return None
-    return timeslot_id
+    Both capacity checks in assign_timeslot() (the soft admin-editable
+    buffer AND the true TIMESLOT_CAPACITY) exist only to support choosing
+    among several workable options -- they don't apply here, since there is
+    no other option to redirect to or leave unassigned in favor of. Always
+    assigns the requested slot; returns None only if no slot was given."""
+    return timeslot_id or None
 
 
 def _timeslot_label_by_id(conn, timeslot_id):
