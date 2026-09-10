@@ -5,6 +5,7 @@
   <p class="subtitle">Restricted to pantry administrators.</p>
 
   <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="username">Username or Email</label>
     <input type="text" id="username" name="username" required autofocus>
 

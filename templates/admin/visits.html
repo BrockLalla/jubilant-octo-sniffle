@@ -40,6 +40,7 @@
           <td>
             <form method="post" action="{{ url_for('admin.delete_visit', visit_id=v.id) }}"
                   onsubmit="return confirm('Delete this visit ({{ v.primary_name }}, {{ v.visit_date }})? This cannot be undone.');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="start_date" value="{{ start_date }}">
               <input type="hidden" name="end_date" value="{{ end_date }}">
               <input type="hidden" name="sort" value="{{ sort }}">

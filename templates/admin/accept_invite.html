@@ -5,6 +5,7 @@
   <p class="subtitle">Setting up an admin account for <strong>{{ email }}</strong>.</p>
 
   <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="password">Password</label>
     <input type="password" id="password" name="password" required minlength="8" autofocus>
     <p class="hint">At least 8 characters.</p>

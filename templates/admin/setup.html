@@ -16,6 +16,7 @@
     </p>
     <form method="post" enctype="multipart/form-data"
           onsubmit="return confirm('This will set up this computer with the uploaded backup. Continue?');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="restore_backup">
       <label for="db_file" class="btn btn-secondary" style="width:auto; cursor:pointer;">📁 Choose Backup File</label>
       <p id="db_file_name" class="muted" style="margin:0.5rem 0 0;">No file chosen</p>
@@ -29,6 +30,7 @@
     <h2>Starting Fresh</h2>
     <p class="hint">This account will have full access to household and visit records.</p>
     <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="create_account">
       <label for="username">Username</label>
       <input type="text" id="username" name="username" required>

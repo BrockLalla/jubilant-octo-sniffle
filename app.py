@@ -2,6 +2,7 @@ import os
 import sys
 
 from flask import Flask
+from flask_wtf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 import db
@@ -30,8 +31,15 @@ def create_app():
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     db.seed_database_if_missing()
     app.secret_key = db.get_secret_key()
+    CSRFProtect(app)
     app.config["MAX_CONTENT_LENGTH"] = 200 * 1024 * 1024  # allow database-backup uploads
     app.config["PREFERRED_URL_SCHEME"] = "https"
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    # Secure requires HTTPS to even send the cookie back -- true on Render
+    # (real TLS, ProxyFix sees it via X-Forwarded-Proto), but the local Mac
+    # app and LAN access are plain HTTP, so this must stay conditional or
+    # every local admin login would silently stop working.
+    app.config["SESSION_COOKIE_SECURE"] = db.is_cloud_deployment()
     db.init_db()
     app.jinja_env.globals["household_status"] = db.household_status
     app.jinja_env.filters["commas"] = lambda v: "{:,}".format(v) if isinstance(v, (int, float)) else v
@@ -41,5 +49,32 @@ def create_app():
 
     app.register_blueprint(public_bp)
     app.register_blueprint(admin_bp, url_prefix="/admin")
+
+    @app.after_request
+    def _security_headers(response):
+        # 'unsafe-inline' is needed for script-src/style-src because the
+        # templates rely throughout on inline onclick/onsubmit handlers and
+        # style="..." attributes (see e.g. admin/backup.html, settings.html)
+        # -- tightening that to a nonce-based policy would mean touching
+        # every template's inline handlers, a separate follow-up. This still
+        # blocks loading any *third-party* script/style/frame, which is the
+        # actual risk a reverse-proxy'd, internet-facing deploy adds.
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data:; "
+            "object-src 'none'; "
+            "base-uri 'self'; "
+            "frame-ancestors 'none'"
+        )
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        if db.is_cloud_deployment():
+            # Only meaningful (and only honored by browsers) over a real
+            # HTTPS connection, which is Render-only -- a no-op locally.
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
 
     return app

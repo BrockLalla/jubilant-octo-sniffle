@@ -20,12 +20,14 @@
             <a class="btn btn-small btn-secondary" href="{{ url_for('admin.household_detail', household_id=h.id) }}">View / Edit</a>
             <form method="post" action="{{ url_for('admin.household_detail', household_id=h.id) }}" style="display:inline"
                   onsubmit="return confirm('Remove all personal info for {{ h.primary_name }}\'s household ({{ h.household_code }})? Visit history is kept for grant reporting. This cannot be undone.');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="action" value="anonymize_household">
               <input type="hidden" name="next" value="{{ url_for('admin.stale_households') }}">
               <button type="submit" class="btn btn-small btn-danger">🕵️ Remove Info</button>
             </form>
             <form method="post" action="{{ url_for('admin.household_detail', household_id=h.id) }}" style="display:inline"
                   onsubmit="return confirm('Permanently delete {{ h.primary_name }}\'s household ({{ h.household_code }}), all its members, and its visit history? This cannot be undone.');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="action" value="delete_household">
               <input type="hidden" name="next" value="{{ url_for('admin.stale_households') }}">
               <button type="submit" class="btn btn-small btn-danger">🗑️ Delete</button>

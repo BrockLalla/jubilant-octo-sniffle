@@ -20,6 +20,7 @@
       registrants. Must be between 1 and {{ capacity }} (the true physical capacity per slot).
     </p>
     <form method="post" style="text-align:center;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="set_active_capacity">
       <label for="active_capacity">Active Capacity</label>
       <input type="number" id="active_capacity" name="active_capacity" min="1" max="{{ capacity }}"
@@ -52,12 +53,14 @@
           <td style="white-space:nowrap;">
             {% if t.active %}
               <form method="post" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="action" value="deactivate">
                 <input type="hidden" name="timeslot_id" value="{{ t.id }}">
                 <button type="submit" class="btn btn-small btn-secondary">Deactivate</button>
               </form>
             {% else %}
               <form method="post" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="action" value="activate">
                 <input type="hidden" name="timeslot_id" value="{{ t.id }}">
                 <button type="submit" class="btn btn-small btn-secondary">Activate</button>
@@ -75,6 +78,7 @@
   <div class="card">
     <h2>Add a Timeslot</h2>
     <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="add">
       <label for="day_of_week">Day of Week</label>
       <select id="day_of_week" name="day_of_week" required>
@@ -96,6 +100,7 @@
     {% if deletable %}
       <p class="hint">Only timeslots with no households currently assigned can be removed.</p>
       <form method="post" onsubmit="return confirm('Delete this timeslot? This cannot be undone.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="action" value="delete">
         <label for="delete_timeslot_id">Timeslot</label>
         <select id="delete_timeslot_id" name="timeslot_id" required>

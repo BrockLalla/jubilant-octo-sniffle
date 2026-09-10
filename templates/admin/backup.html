@@ -28,6 +28,7 @@
     <form method="post" action="{{ url_for('admin.backup_import') }}" enctype="multipart/form-data"
           onsubmit="return confirm('This will replace ALL data on this computer with the uploaded backup. Continue?');"
           style="text-align:center;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label>Backup File</label>
       <label for="db_file" class="btn btn-secondary" style="width:auto; cursor:pointer;">📁 Choose Backup File</label>
       <p id="db_file_name" class="muted" style="margin:0.5rem 0 0;">No file chosen</p>

@@ -92,6 +92,7 @@
     </div>
 
     <form method="post" action="{{ url_for('public.checkin_do', household_id=household.id) }}" id="checkin-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label for="checked_in_by">Your Name (volunteer, optional)</label>
       <input type="text" id="checked_in_by" name="checked_in_by" placeholder="e.g. Jane">
       <button type="submit" class="btn btn-primary" style="margin-top:1rem;">✅ Confirm Pickup for Today</button>

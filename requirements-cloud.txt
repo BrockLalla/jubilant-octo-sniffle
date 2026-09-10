@@ -3,4 +3,5 @@
 # are only for building the local macOS menu-bar app, and rumps in
 # particular (a Cocoa/macOS binding) won't even install on Linux.
 Flask==3.0.3
+Flask-WTF==1.2.2
 gunicorn==23.0.0

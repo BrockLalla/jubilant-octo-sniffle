@@ -12,6 +12,7 @@
   <div class="card">
     <h2>Add a Closure</h2>
     <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="add">
       <label for="closure_date">Date</label>
       <input type="date" id="closure_date" name="closure_date" min="1900-01-01" max="2099-12-31" required>
@@ -28,6 +29,7 @@
           <td>{{ c.reason or '' }}</td>
           <td>
             <form method="post" onsubmit="return confirm('Remove the closure on {{ c.closure_date }}?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="action" value="delete">
               <input type="hidden" name="closure_id" value="{{ c.id }}">
               <button type="submit" class="btn btn-small btn-danger">🗑️ Remove</button>

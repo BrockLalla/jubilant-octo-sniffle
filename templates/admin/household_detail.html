@@ -15,6 +15,7 @@
   <div class="card">
     <h2>Household Info</h2>
     <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="update_household">
       <label>First Name</label>
       <input type="text" name="primary_first_name" value="{{ household.primary_first_name }}" required>
@@ -97,11 +98,13 @@
           </td>
           <td>
             <form id="member-form-{{ m.id }}" method="post" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="action" value="update_member">
               <input type="hidden" name="member_id" value="{{ m.id }}">
               <button type="submit" class="btn btn-small btn-secondary">Save</button>
             </form>
             <form method="post" style="display:inline" onsubmit="return confirm('Remove {{ m.name }} from this household?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="action" value="delete_member">
               <input type="hidden" name="member_id" value="{{ m.id }}">
               <button type="submit" class="btn btn-small btn-danger">Remove</button>
@@ -114,6 +117,7 @@
 
     <h3>Add a Member</h3>
     <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="add_member">
       <label>First Name</label>
       <input type="text" name="first_name" required>
@@ -141,6 +145,7 @@
       weeks still count correctly in grant reports. Cannot be undone.
     </p>
     <form method="post" onsubmit="return confirm('Remove all personal info for {{ household.primary_name }}\'s household ({{ household.household_code }})? Visit history is kept for grant reporting. This cannot be undone.');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="anonymize_household">
       <button type="submit" class="btn btn-danger">🕵️ Remove Personal Info (Keep Visit History)</button>
     </form>
@@ -152,6 +157,7 @@
       history. This cannot be undone.
     </p>
     <form method="post" onsubmit="return confirm('Permanently delete {{ household.primary_name }}\'s household ({{ household.household_code }}), all its members, and its visit history? This cannot be undone.');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="delete_household">
       <button type="submit" class="btn btn-danger">🗑️ Delete This Household Permanently</button>
     </form>

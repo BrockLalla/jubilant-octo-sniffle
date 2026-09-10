@@ -15,6 +15,7 @@
       and paste that 16-character password below (not your normal Gmail password).
     </p>
     <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="save">
       <label for="smtp_host">SMTP Server</label>
       <input type="text" id="smtp_host" name="smtp_host" value="{{ cfg.smtp_host or 'smtp.gmail.com' }}" required>
@@ -47,6 +48,7 @@
       <strong>$household_code</strong>, <strong>$timeslot</strong>.
     </p>
     <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label for="email_subject">Subject</label>
       <input type="text" id="email_subject" name="email_subject" value="{{ cfg.email_subject }}" required>
 
@@ -89,6 +91,7 @@
 
     <form method="post" style="margin-top:1rem;"
           onsubmit="return confirm('This immediately breaks every volunteer device\'s bookmarked link until they reopen the new one. Continue?');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="rotate_volunteer_token">
       <button type="submit" class="btn btn-secondary">Rotate Volunteer Link</button>
     </form>
