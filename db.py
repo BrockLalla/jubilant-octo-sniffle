@@ -858,6 +858,28 @@ def _household_has_member_under_2(conn, household_id):
     return any(age_in_years(r["date_of_birth"]) < 2 for r in rows)
 
 
+def clear_stale_needs_diapers(household_id):
+    """If needs_diapers is set but no current member is actually under 2 --
+    the qualifying child's 2nd birthday passed with no edit ever happening
+    to trigger _recompute_needs_diapers -- clears it and reports that it
+    did. Meant to be called at check-in, so the household's very next visit
+    after aging out both self-corrects the flag and can show a one-time
+    soft notice instead of silently prompting a volunteer to hand out
+    diapers no one needs anymore."""
+    conn = get_db()
+    try:
+        row = conn.execute("SELECT needs_diapers FROM households WHERE id = ?", (household_id,)).fetchone()
+        if not row or not row["needs_diapers"]:
+            return False
+        if _household_has_member_under_2(conn, household_id):
+            return False
+        conn.execute("UPDATE households SET needs_diapers = 0 WHERE id = ?", (household_id,))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
 def _recompute_needs_diapers(conn, household_id):
     """needs_diapers auto-tracks whether the household currently has any
     member under 2 -- cleared once the youngest child ages past 2, and
