@@ -1,4 +1,4 @@
-# Used by the Docker image for cloud deployment (Fly.io) -- see Dockerfile.
+# Used by the Docker image for cloud deployment (Render) -- see Dockerfile.
 # Deliberately separate from requirements.txt: pyinstaller and rumps there
 # are only for building the local macOS menu-bar app, and rumps in
 # particular (a Cocoa/macOS binding) won't even install on Linux.

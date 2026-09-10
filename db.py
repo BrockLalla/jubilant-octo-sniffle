@@ -15,10 +15,10 @@ import shutil
 def get_data_dir():
     """Where the database (and secret key) live.
 
-    DATA_DIR (set by the cloud deployment's fly.toml, pointing at the
-    mounted persistent volume) takes priority over everything else, so a
-    single env var is all cloud hosting needs to change here -- the
-    volume is persistent, so secret.txt written there survives redeploys
+    DATA_DIR (set by the cloud deployment's render.yaml, pointing at the
+    mounted persistent disk) takes priority over everything else, so a
+    single env var is all cloud hosting needs to change here -- the disk
+    is persistent, so secret.txt written there survives redeploys
     exactly like pantry.db does, with no separate secret-management step.
 
     Otherwise: when packaged with PyInstaller (sys.frozen), the app bundle

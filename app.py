@@ -23,7 +23,8 @@ def create_app():
     )
     # Trusts one layer of reverse-proxy headers (X-Forwarded-For/Proto/Host)
     # so request.remote_addr and url_for(_external=True) reflect the real
-    # client and https:// scheme when deployed behind Fly.io's edge proxy.
+    # client and https:// scheme when deployed behind Render's reverse proxy
+    # (or any standard one -- this just trusts X-Forwarded-* headers).
     # A no-op locally / in the packaged Mac app, since nothing there sends
     # those headers in the first place.
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)

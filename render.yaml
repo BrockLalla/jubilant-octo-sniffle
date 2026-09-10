@@ -1,0 +1,27 @@
+# Render deployment config ("Blueprint" -- see render.com/docs/blueprint-spec).
+# In the Render dashboard: New > Blueprint, point it at this repo, and it
+# reads this file to set everything up. Double check the exact field names
+# below against Render's current docs when you actually deploy -- their
+# schema does shift over time and this wasn't tested against a live account.
+#
+# Deliberately a single instance, never scaled out: the database is SQLite
+# on a mounted disk, which only one process can safely write to at a time.
+# See README.md for the full reasoning.
+services:
+  - type: web
+    name: tnc-pantry-tracker
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter  # flat monthly fee; required tier for a persistent disk
+    numInstances: 1
+    envVars:
+      - key: DATA_DIR
+        value: /data
+      # SECRET_KEY intentionally NOT set here -- db.get_secret_key() writes
+      # secret.txt onto the persistent disk itself on first boot and reuses
+      # it after, same as it already does for the local Mac app. Nothing
+      # to configure.
+    disk:
+      name: pantry-data
+      mountPath: /data
+      sizeGB: 1
