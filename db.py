@@ -1769,6 +1769,24 @@ def log_audit_event(actor, action, detail=None, ip_address=None):
         conn.close()
 
 
+def recent_login_failures(identifier, ip_address, minutes=15):
+    """Count of login_failure events in the last `minutes` matching either
+    the attempted username/email or the source IP -- reuses the audit log
+    as the source of truth instead of separate in-memory rate-limit state,
+    so it survives process restarts and needs no extra table."""
+    conn = get_db()
+    try:
+        cutoff = (datetime.datetime.now() - datetime.timedelta(minutes=minutes)).isoformat(timespec="seconds")
+        row = conn.execute(
+            "SELECT COUNT(*) AS c FROM audit_log "
+            "WHERE action = 'login_failure' AND created_at >= ? AND (actor = ? OR ip_address = ?)",
+            (cutoff, identifier, ip_address),
+        ).fetchone()
+        return row["c"]
+    finally:
+        conn.close()
+
+
 def list_audit_log(limit=200):
     conn = get_db()
     try:

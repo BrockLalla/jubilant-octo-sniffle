@@ -145,6 +145,11 @@ def login():
     if request.method == "POST":
         identifier = request.form.get("username", "").strip()
         password = request.form.get("password", "")
+
+        if db.recent_login_failures(identifier, request.remote_addr) >= 5:
+            flash("Too many failed login attempts. Please wait 15 minutes and try again.", "error")
+            return render_template("admin/login.html"), 429
+
         user = db.get_admin_user(identifier) or db.get_admin_user_by_email(identifier)
         if user and check_password_hash(user["password_hash"], password):
             session.clear()
