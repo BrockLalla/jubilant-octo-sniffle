@@ -94,6 +94,11 @@
     <label for="volunteer_url">Volunteer Link</label>
     <input type="text" id="volunteer_url" value="{{ volunteer_url }}" readonly onclick="this.select();">
 
+    <button type="button" class="btn btn-secondary" style="margin-top:1rem;"
+            onclick="navigator.clipboard.writeText(document.getElementById('volunteer_url').value).then(function(){ var b = event.target; var old = b.textContent; b.textContent = 'Copied!'; setTimeout(function(){ b.textContent = old; }, 1500); });">
+      📋 Copy Volunteer Link
+    </button>
+
     {% if current_admin.is_super_admin %}
       <form method="post" style="margin-top:1rem;"
             onsubmit="return confirm('This immediately breaks every volunteer device\'s bookmarked link until they reopen the new one. Continue?');">
