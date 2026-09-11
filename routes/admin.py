@@ -12,6 +12,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import db
 import emailer
 import netinfo
+import offsite_backup
 
 bp = Blueprint("admin", __name__)
 
@@ -848,10 +849,42 @@ def export_visits():
     )
 
 
-@bp.route("/backup")
+@bp.route("/backup", methods=["GET", "POST"])
 @login_required
 def backup():
-    return render_template("admin/backup.html")
+    current_admin = db.get_admin_user(session.get("admin_username"))
+
+    if request.method == "POST":
+        action = request.form.get("action")
+        if not current_admin["is_super_admin"]:
+            flash("Only a super admin can manage off-site backups.", "error")
+            return redirect(url_for("admin.backup"))
+
+        if action == "save_offsite_backup":
+            db.set_setting("b2_key_id", request.form.get("b2_key_id", "").strip())
+            new_app_key = request.form.get("b2_application_key", "")
+            if new_app_key:
+                db.set_setting("b2_application_key", new_app_key)
+            db.set_setting("b2_bucket_name", request.form.get("b2_bucket_name", "").strip())
+            new_passphrase = request.form.get("backup_passphrase", "")
+            if new_passphrase:
+                db.set_setting("backup_passphrase", new_passphrase)
+            db.log_audit_event(
+                current_admin["username"], "offsite_backup_config_updated", ip_address=request.remote_addr,
+            )
+            flash("Off-site backup settings saved.", "success")
+        elif action == "run_offsite_backup_now":
+            ok, error = offsite_backup.run_backup_once()
+            if ok:
+                flash("Backup uploaded successfully.", "success")
+            else:
+                flash(f"Backup failed: {error}", "error")
+        return redirect(url_for("admin.backup"))
+
+    cfg = db.get_settings_dict(
+        ["b2_key_id", "b2_bucket_name", "last_offsite_backup_at", "last_offsite_backup_status"]
+    )
+    return render_template("admin/backup.html", cfg=cfg, current_admin=current_admin)
 
 
 @bp.route("/audit-log")

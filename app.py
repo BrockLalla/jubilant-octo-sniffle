@@ -6,6 +6,7 @@ from flask_wtf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 import db
+import offsite_backup
 
 
 def resource_path(*parts):
@@ -41,6 +42,7 @@ def create_app():
     # every local admin login would silently stop working.
     app.config["SESSION_COOKIE_SECURE"] = db.is_cloud_deployment()
     db.init_db()
+    offsite_backup.start_background_scheduler()
     app.jinja_env.globals["household_status"] = db.household_status
     app.jinja_env.filters["commas"] = lambda v: "{:,}".format(v) if isinstance(v, (int, float)) else v
 

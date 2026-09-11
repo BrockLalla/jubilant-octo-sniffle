@@ -37,4 +37,63 @@
       <button type="submit" class="btn btn-danger" style="margin-top:1rem; width:auto;">⬆️ Import &amp; Replace Data</button>
     </form>
   </div>
+
+  {% if cfg is defined %}
+  <div class="card">
+    <h2>Off-Site Backups</h2>
+    <p class="hint">
+      Automatically uploads an encrypted copy of the database to Backblaze B2 every night, separate
+      from this app's own storage — so a problem with this app's hosting can't take the only copy of
+      the data down with it. The database is encrypted with your passphrase below before it ever
+      leaves this app, so the B2 account alone can't read it.
+    </p>
+    <p class="hint">
+      <strong>Last backup:</strong>
+      {% if cfg.last_offsite_backup_at %}
+        {{ cfg.last_offsite_backup_at }} —
+        {% if cfg.last_offsite_backup_status == 'success' %}
+          <span class="status-badge status-green">Success</span>
+        {% else %}
+          <span class="status-badge status-red">{{ cfg.last_offsite_backup_status }}</span>
+        {% endif %}
+      {% else %}
+        Never run yet.
+      {% endif %}
+    </p>
+
+    {% if current_admin.is_super_admin %}
+      <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="save_offsite_backup">
+        <label for="b2_key_id">Backblaze B2 Key ID</label>
+        <input type="text" id="b2_key_id" name="b2_key_id" value="{{ cfg.b2_key_id or '' }}">
+
+        <label for="b2_application_key">Backblaze B2 Application Key</label>
+        <input type="password" id="b2_application_key" name="b2_application_key"
+               placeholder="{{ 'Leave blank to keep the saved key' if cfg.b2_key_id else 'Enter application key' }}">
+
+        <label for="b2_bucket_name">Backblaze B2 Bucket Name</label>
+        <input type="text" id="b2_bucket_name" name="b2_bucket_name" value="{{ cfg.b2_bucket_name or '' }}">
+
+        <label for="backup_passphrase">Backup Encryption Passphrase</label>
+        <input type="password" id="backup_passphrase" name="backup_passphrase"
+               placeholder="{{ 'Leave blank to keep the saved passphrase' if cfg.b2_key_id else 'Choose a passphrase' }}">
+        <p class="hint">
+          Write this down somewhere safe outside this app — it's the only way to decrypt a backup
+          later, and there's no way to recover it if it's lost.
+        </p>
+
+        <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Save Off-Site Backup Settings</button>
+      </form>
+
+      <form method="post" style="margin-top:1rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="run_offsite_backup_now">
+        <button type="submit" class="btn btn-secondary">Run Backup Now</button>
+      </form>
+    {% else %}
+      <p class="muted">Only a super admin can change these settings.</p>
+    {% endif %}
+  </div>
+  {% endif %}
 {% endblock %}
