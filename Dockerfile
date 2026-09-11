@@ -8,7 +8,7 @@ WORKDIR /app
 COPY requirements-cloud.txt .
 RUN pip install --no-cache-dir -r requirements-cloud.txt
 
-COPY app.py db.py emailer.py netinfo.py ./
+COPY app.py db.py emailer.py netinfo.py offsite_backup.py ./
 COPY routes/ routes/
 COPY templates/ templates/
 COPY static/ static/
