@@ -1,3 +1,4 @@
+import datetime
 import os
 import sys
 
@@ -41,6 +42,13 @@ def create_app():
     # app and LAN access are plain HTTP, so this must stay conditional or
     # every local admin login would silently stop working.
     app.config["SESSION_COOKIE_SECURE"] = db.is_cloud_deployment()
+    # An admin session (see routes/admin.py's login()) now expires after 4
+    # hours of inactivity instead of staying open indefinitely until the
+    # browser is closed -- on a shared pantry laptop, a forgotten open tab
+    # shouldn't leave an admin session live all day. Flask refreshes this
+    # on every request by default (SESSION_REFRESH_EACH_REQUEST), so it's
+    # a sliding idle timeout, not a fixed 4-hour cap from login.
+    app.config["PERMANENT_SESSION_LIFETIME"] = datetime.timedelta(hours=4)
     db.init_db()
     offsite_backup.start_background_scheduler()
     app.jinja_env.globals["household_status"] = db.household_status

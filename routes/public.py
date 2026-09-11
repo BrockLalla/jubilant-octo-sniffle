@@ -343,8 +343,7 @@ def checkin_do(household_id):
             diapers_aged_out=diapers_aged_out,
         )
 
-    checked_in_by = request.form.get("checked_in_by", "").strip() or None
-    db.record_visit(household_id, checked_in_by)
+    db.record_visit(household_id)
     return render_template(
         "checkin_result.html",
         household=data["household"],

@@ -154,6 +154,7 @@ def login():
         user = db.get_admin_user(identifier) or db.get_admin_user_by_email(identifier)
         if user and check_password_hash(user["password_hash"], password):
             session.clear()
+            session.permanent = True  # opts into PERMANENT_SESSION_LIFETIME (app.py) instead of lasting until the browser closes
             session["admin_username"] = user["username"]
             db.log_audit_event(user["username"], "login_success", ip_address=request.remote_addr)
             return redirect(url_for("admin.dashboard"))
