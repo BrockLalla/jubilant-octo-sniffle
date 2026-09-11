@@ -21,6 +21,13 @@ services:
       # secret.txt onto the persistent disk itself on first boot and reuses
       # it after, same as it already does for the local Mac app. Nothing
       # to configure.
+      #
+      # BACKUP_PASSPHRASE also intentionally NOT set here -- set it once,
+      # manually, in the Render dashboard (this service -> Environment)
+      # instead. It's what decrypts the off-site backups (see
+      # offsite_backup.py), so on purpose it can't live in this repo or on
+      # the same persistent disk the backups exist to protect against
+      # losing -- a Render env var survives independently of that disk.
     disk:
       name: pantry-data
       mountPath: /data

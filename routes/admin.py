@@ -866,9 +866,6 @@ def backup():
             if new_app_key:
                 db.set_setting("b2_application_key", new_app_key)
             db.set_setting("b2_bucket_name", request.form.get("b2_bucket_name", "").strip())
-            new_passphrase = request.form.get("backup_passphrase", "")
-            if new_passphrase:
-                db.set_setting("backup_passphrase", new_passphrase)
             db.log_audit_event(
                 current_admin["username"], "offsite_backup_config_updated", ip_address=request.remote_addr,
             )
@@ -884,7 +881,10 @@ def backup():
     cfg = db.get_settings_dict(
         ["b2_key_id", "b2_bucket_name", "last_offsite_backup_at", "last_offsite_backup_status"]
     )
-    return render_template("admin/backup.html", cfg=cfg, current_admin=current_admin)
+    passphrase_configured = bool(os.environ.get("BACKUP_PASSPHRASE"))
+    return render_template(
+        "admin/backup.html", cfg=cfg, current_admin=current_admin, passphrase_configured=passphrase_configured,
+    )
 
 
 @bp.route("/audit-log")

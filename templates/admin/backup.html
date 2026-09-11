@@ -44,8 +44,21 @@
     <p class="hint">
       Automatically uploads an encrypted copy of the database to Backblaze B2 every night, separate
       from this app's own storage — so a problem with this app's hosting can't take the only copy of
-      the data down with it. The database is encrypted with your passphrase below before it ever
-      leaves this app, so the B2 account alone can't read it.
+      the data down with it. The database is encrypted with a passphrase before it ever leaves this
+      app, so the B2 account alone can't read it.
+    </p>
+    <p class="hint">
+      <strong>Backup passphrase:</strong>
+      {% if passphrase_configured %}
+        <span class="status-badge status-green">Set</span>
+      {% else %}
+        <span class="status-badge status-red">Not set</span> — backups won't run until it is.
+      {% endif %}
+      Set as a Render environment variable, not stored in this database — on purpose, since it's
+      the one thing that can't live in the same place the backups exist to protect against losing.
+      In the Render dashboard: this service &rarr; Environment &rarr; Add Environment Variable,
+      key <code>BACKUP_PASSPHRASE</code>. Also worth saving a copy in a password manager, since
+      Render access is still the one remaining single point of failure for it.
     </p>
     <p class="hint">
       <strong>Last backup:</strong>
@@ -74,14 +87,6 @@
 
         <label for="b2_bucket_name">Backblaze B2 Bucket Name</label>
         <input type="text" id="b2_bucket_name" name="b2_bucket_name" value="{{ cfg.b2_bucket_name or '' }}">
-
-        <label for="backup_passphrase">Backup Encryption Passphrase</label>
-        <input type="password" id="backup_passphrase" name="backup_passphrase"
-               placeholder="{{ 'Leave blank to keep the saved passphrase' if cfg.b2_key_id else 'Choose a passphrase' }}">
-        <p class="hint">
-          Write this down somewhere safe outside this app — it's the only way to decrypt a backup
-          later, and there's no way to recover it if it's lost.
-        </p>
 
         <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Save Off-Site Backup Settings</button>
       </form>

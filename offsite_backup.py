@@ -85,13 +85,20 @@ def run_backup_once():
     admin's "Run Backup Now" button. Never raises: a backup failure must
     never be allowed to take down the live app. Returns (True, None) on
     success or (False, error_message) on failure."""
-    cfg = db.get_settings_dict(["b2_key_id", "b2_application_key", "b2_bucket_name", "backup_passphrase"])
+    cfg = db.get_settings_dict(["b2_key_id", "b2_application_key", "b2_bucket_name"])
     key_id = cfg.get("b2_key_id")
     application_key = cfg.get("b2_application_key")
     bucket_name = cfg.get("b2_bucket_name")
-    passphrase = cfg.get("backup_passphrase")
+    # Deliberately an env var, not a DB setting like the B2 fields above:
+    # this is the one piece whose loss means every past backup becomes
+    # permanently undecryptable, so it can't live in the same database the
+    # backups exist to protect against losing. Render env vars survive
+    # independently of the persistent disk, and are recoverable anytime
+    # from the Render dashboard rather than depending on someone having
+    # written it down and kept track of that note.
+    passphrase = os.environ.get("BACKUP_PASSPHRASE")
     if not (key_id and application_key and bucket_name and passphrase):
-        return False, "Off-site backup isn't fully configured yet -- fill in all the fields above."
+        return False, "Off-site backup isn't fully configured yet -- see Admin -> Backup & Restore."
 
     try:
         payload, filename = create_encrypted_snapshot(passphrase)
