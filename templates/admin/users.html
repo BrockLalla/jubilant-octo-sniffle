@@ -104,4 +104,10 @@
     {% endif %}
   </div>
   {% endif %}
+
+  {% if current_admin.is_super_admin %}
+    <p style="text-align:center; margin-top:1.5rem;">
+      <a class="muted" href="{{ url_for('admin.audit_log') }}">View Audit Log</a>
+    </p>
+  {% endif %}
 {% endblock %}

@@ -8,8 +8,7 @@
   <a href="{{ url_for('admin.stale_households') }}" class="{{ 'active' if active == 'stale' else '' }}">Stale Households</a>
   <a href="{{ url_for('admin.possible_duplicates') }}" class="{{ 'active' if active == 'duplicates' else '' }}">Possible Duplicates</a>
   <a href="{{ url_for('admin.settings') }}" class="{{ 'active' if active == 'settings' else '' }}">Email Settings</a>
-  <a href="{{ url_for('admin.backup') }}" class="{{ 'active' if active == 'backup' else '' }}">Backup &amp; Restore</a>
   <a href="{{ url_for('admin.users') }}" class="{{ 'active' if active == 'users' else '' }}">Admin Settings</a>
-  <a href="{{ url_for('admin.audit_log') }}" class="{{ 'active' if active == 'audit_log' else '' }}">Audit Log</a>
+  <a href="{{ url_for('admin.backup') }}" class="{{ 'active' if active == 'backup' else '' }}">Backup &amp; Restore</a>
   <a href="{{ url_for('admin.logout') }}">Log Out</a>
 </div>
