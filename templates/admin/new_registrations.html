@@ -6,8 +6,11 @@
   {% include "admin/_nav.html" %}
   <h1>New Registrations</h1>
   <p class="subtitle">
-    Households registered in this date range, plus anyone who doesn't have a card made yet regardless
-    of when they registered — for the weekly card-making review.
+    {% if looking_back %}
+      Everyone registered in this date range, regardless of card status.
+    {% else %}
+      Everyone who still needs a card made — check the box once it's done and they'll drop off this list.
+    {% endif %}
   </p>
 
   <form method="get" class="card">
@@ -15,27 +18,25 @@
     <input type="date" name="start_date" value="{{ start_date }}" min="1900-01-01" max="2099-12-31">
     <label>End Date</label>
     <input type="date" name="end_date" value="{{ end_date }}" min="1900-01-01" max="2099-12-31">
+    <p class="hint">Leave both blank to see everyone who still needs a card. Set a range to look back at a
+      specific past week instead.</p>
     <div class="btn-row" style="margin-top:1rem;">
       <button type="submit" class="btn btn-primary">Filter</button>
       <a class="btn btn-secondary" href="{{ url_for('admin.new_registrations') }}">Clear</a>
     </div>
   </form>
 
-  {% if defaulted_range %}
-    <p class="hint">Showing the last 7 days by default — set an earlier start date above to see more.</p>
-  {% endif %}
-
   <div class="table-scroll">
     <table class="table-centered new-registrations-table">
       <tr>
-        <th>Household Code</th>
+        <th>Code</th>
         <th>Name</th>
         <th>Phone</th>
         <th>Registered</th>
-        <th>Assigned Timeslot</th>
-        <th>ID Verified</th>
-        <th>Diapers</th>
-        <th>Formula</th>
+        <th>Timeslot</th>
+        <th>ID</th>
+        <th>🧷</th>
+        <th>🍼</th>
         <th>Card Made</th>
         <th></th>
       </tr>
@@ -45,10 +46,10 @@
           <td>{{ h.primary_name }}</td>
           <td>{{ h.phone or '' }}</td>
           <td>{{ h.created_at[:10] }}</td>
-          <td>{{ h.assigned_timeslot_label or 'Not yet assigned' }}</td>
+          <td>{{ h.assigned_timeslot_short or 'Not yet assigned' }}</td>
           <td>{{ '✅' if h.id_verified else '' }}</td>
-          <td>{{ '🧷' if h.needs_diapers else '' }}</td>
-          <td>{{ '🍼' if h.needs_formula else '' }}</td>
+          <td>{{ '✅' if h.needs_diapers else '' }}</td>
+          <td>{{ '✅' if h.needs_formula else '' }}</td>
           <td>
             <form method="post" action="{{ url_for('admin.toggle_card_made', household_id=h.id) }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -58,12 +59,12 @@
                      {% if h.card_made_at %}checked{% endif %}>
             </form>
           </td>
-          <td><a class="btn btn-small btn-secondary" href="{{ url_for('admin.household_detail', household_id=h.id) }}">View / Edit</a></td>
+          <td><a class="btn btn-small btn-secondary" href="{{ url_for('admin.household_detail', household_id=h.id) }}">Edit</a></td>
         </tr>
       {% endfor %}
     </table>
   </div>
   {% if not rows %}
-    <p class="muted">No new registrations in this range.</p>
+    <p class="muted">{{ 'No registrations in this range.' if looking_back else 'Nobody needs a card right now.' }}</p>
   {% endif %}
 {% endblock %}

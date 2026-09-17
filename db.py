@@ -324,6 +324,21 @@ def timeslot_label(day_of_week, start_time, end_time):
     return f"{DAY_NAMES[day_of_week]}, {format_time_12h(start_time)} – {format_time_12h(end_time)}"
 
 
+def compact_timeslot_label(day_of_week, start_time, end_time):
+    """Short form ("Tue 3-4pm", "Wed 11am-12pm") for tables with many rows
+    where the full label ("Tuesday, 3:00 PM - 4:00 PM") wraps and eats up
+    space -- e.g. New Registrations. Drops :00 minutes and only repeats
+    am/pm when the start and end fall on different sides of noon."""
+    def fmt(hhmm):
+        t = datetime.datetime.strptime(hhmm, "%H:%M")
+        return (t.strftime("%-I:%M%p") if t.minute else t.strftime("%-I%p")).lower()
+
+    start_s, end_s = fmt(start_time), fmt(end_time)
+    if start_s[-2:] == end_s[-2:]:
+        start_s = start_s[:-2]
+    return f"{DAY_NAMES[day_of_week][:3]} {start_s}-{end_s}"
+
+
 def combine_date_parts(year, month, day):
     """Combine dropdown-selected year/month/day strings into an ISO date.
 
@@ -858,15 +873,19 @@ def list_all_households(sort=None, direction="asc"):
 
 
 def list_recent_registrations(start_date=None, end_date=None):
-    """Households registered in the given date range, PLUS any household
-    with no card made yet regardless of how old it is -- oldest first.
-    Built for the weekly workflow of reviewing new signups and making a
-    physical ID card for each (see routes/admin.py, which defaults the
-    date range to the last 7 days); the "no card yet" half of the OR is
-    what keeps a straggler from silently aging out of view just because a
-    week got missed. created_at is a full timestamp, not just a date, so
-    end_date is padded to the end of that day for an inclusive same-day
-    match."""
+    """Two modes, oldest first:
+
+    - No date filter (the normal, default view): every household that
+      still needs a card made, full stop -- regardless of how old the
+      registration is, so a straggler from a missed week never silently
+      falls out of view. Checking "Card Made" removes it from this view
+      immediately, since the point is a live to-do list, not a log.
+    - An explicit date range: a plain lookback at everyone registered in
+      that window, regardless of card status -- for reviewing a specific
+      past week rather than working the current to-do list. created_at is
+      a full timestamp, not just a date, so end_date is padded to the end
+      of that day for an inclusive same-day match.
+    """
     conn = get_db()
     try:
         q = (
@@ -882,13 +901,20 @@ def list_recent_registrations(start_date=None, end_date=None):
             date_clauses.append("h.created_at <= ?")
             params.append(end_date + "T23:59:59")
         if date_clauses:
-            q += " WHERE (" + " AND ".join(date_clauses) + " OR h.card_made_at IS NULL)"
+            q += " WHERE " + " AND ".join(date_clauses)
+        else:
+            q += " WHERE h.card_made_at IS NULL"
         q += " ORDER BY h.created_at ASC"
         rows = conn.execute(q, params).fetchall()
         result = []
         for r in rows:
             d = dict(r)
             d["assigned_timeslot_label"] = _timeslot_label_by_id(conn, d.get("assigned_timeslot_id"))
+            ts = conn.execute(
+                "SELECT day_of_week, start_time, end_time FROM timeslots WHERE id = ?",
+                (d.get("assigned_timeslot_id"),),
+            ).fetchone()
+            d["assigned_timeslot_short"] = compact_timeslot_label(*ts) if ts else None
             result.append(d)
         return result
     finally:

@@ -497,19 +497,16 @@ def households():
 def new_registrations():
     start_date = request.args.get("start_date", "").strip() or None
     end_date = request.args.get("end_date", "").strip() or None
-    # Default to the last 7 days -- matches the weekly review workflow
-    # (check once after pantry hours, make a card for everyone new since
-    # last time). An explicit date range in the filter overrides this.
-    # Either way, list_recent_registrations() always also includes anyone
-    # with no card made yet, regardless of this range, so a straggler from
-    # a missed week never just falls out of view.
-    defaulted_range = not start_date and not end_date
-    if defaulted_range:
-        start_date = (datetime.date.today() - datetime.timedelta(days=7)).isoformat()
+    # No date filter (the default, and what "Clear" resets to): a live
+    # to-do list of every household that still needs a card, regardless of
+    # age -- checking "Card Made" removes it immediately. Setting a date
+    # range switches to a plain lookback at that week's registrations
+    # instead, regardless of card status.
+    looking_back = bool(start_date or end_date)
     rows = db.list_recent_registrations(start_date, end_date)
     return render_template(
         "admin/new_registrations.html", rows=rows, start_date=start_date or "", end_date=end_date or "",
-        defaulted_range=defaulted_range,
+        looking_back=looking_back,
     )
 
 
