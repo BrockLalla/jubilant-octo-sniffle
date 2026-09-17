@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% import "_macros.html" as macros %}
 {% block title %}Register a Household{% endblock %}
 {% block content %}
   <h1>Register a New Household</h1>
@@ -15,8 +14,8 @@
     <label for="primary_last_name">Last Name</label>
     <input type="text" id="primary_last_name" name="primary_last_name" value="{{ form.get('primary_last_name', '') }}" required>
 
-    <label>Date of Birth</label>
-    {{ macros.dob_select('primary_dob', month=form.get('primary_dob_month'), day=form.get('primary_dob_day'), year=form.get('primary_dob_year'), current_year=current_year) }}
+    <label for="primary_age">Age</label>
+    <input type="number" id="primary_age" name="primary_age" min="0" max="119" value="{{ form.get('primary_age', '') }}" required>
 
     <label for="phone">Phone Number</label>
     <input type="tel" id="phone" name="phone" value="{{ form.get('phone', '') }}" placeholder="(optional, helps volunteers find you at check-in)">
@@ -123,8 +122,8 @@
       <input type="text" name="member_first_name[]">
       <label>Last Name</label>
       <input type="text" name="member_last_name[]">
-      <label>Date of Birth</label>
-      {{ macros.dob_select('member_dob', suffix='[]', current_year=current_year) }}
+      <label>Age</label>
+      <input type="number" name="member_age[]" min="0" max="119">
       <label>Relationship to Primary Applicant</label>
       <select name="member_relationship[]">
         <option value="Spouse">Spouse</option>

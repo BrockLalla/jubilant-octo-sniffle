@@ -360,6 +360,27 @@ def combine_date_parts(year, month, day):
         raise ValueError("Invalid date")
 
 
+def age_to_approximate_dob(age):
+    """Approximates a date of birth from an age in years -- used by the
+    public registration form, which asks new registrants for their age
+    rather than an exact birthdate (simpler to fill in, and doesn't
+    collect a specific birthdate the app doesn't actually need). Grant
+    report age brackets and the under-2 diaper check both key off
+    date_of_birth and need it to age forward correctly as real time
+    passes, so this reconstructs a real date (today's month/day, `age`
+    years ago) rather than storing a static age that would go stale.
+    Raises ValueError for a negative or implausible age."""
+    age = int(age)
+    if not (0 <= age <= 119):
+        raise ValueError("Implausible age")
+    today = datetime.date.today()
+    try:
+        return today.replace(year=today.year - age).isoformat()
+    except ValueError:
+        # today is Feb 29 and (today.year - age) isn't a leap year.
+        return today.replace(year=today.year - age, day=28).isoformat()
+
+
 def next_household_number(conn):
     """Next household_code number, computed fresh from the highest existing
     one each time rather than a stored counter — self-heals regardless of

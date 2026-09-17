@@ -135,23 +135,14 @@ def register():
             errors.append("Please select the one time you can make before checking \"I can only make this time.\"")
 
         try:
-            primary_dob = db.combine_date_parts(
-                request.form.get("primary_dob_year"),
-                request.form.get("primary_dob_month"),
-                request.form.get("primary_dob_day"),
-            )
-        except ValueError:
+            primary_dob = db.age_to_approximate_dob(request.form.get("primary_age", ""))
+        except (ValueError, TypeError):
             primary_dob = None
-            errors.append("Please select a complete date of birth for the primary applicant.")
-        else:
-            if not primary_dob:
-                errors.append("Please select the primary applicant's date of birth.")
+            errors.append("Please enter the primary applicant's age.")
 
         member_first_names = request.form.getlist("member_first_name[]")
         member_last_names = request.form.getlist("member_last_name[]")
-        member_months = request.form.getlist("member_dob_month[]")
-        member_days = request.form.getlist("member_dob_day[]")
-        member_years = request.form.getlist("member_dob_year[]")
+        member_ages = request.form.getlist("member_age[]")
         member_rels = request.form.getlist("member_relationship[]")
         # A hidden field (kept in sync with the checkbox by register.js)
         # guarantees exactly one "0"/"1" entry per row, so this list always
@@ -169,18 +160,21 @@ def register():
                 "id_verified": id_verified,
             }
         ]
-        for first, last, month, day, year, rel, verified in zip(
-            member_first_names, member_last_names, member_months, member_days, member_years, member_rels,
-            member_id_verified,
+        for first, last, age_raw, rel, verified in zip(
+            member_first_names, member_last_names, member_ages, member_rels, member_id_verified,
         ):
             first, last = first.strip(), last.strip()
             if not first and not last:
                 continue
-            try:
-                member_dob = db.combine_date_parts(year, month, day)
-            except ValueError:
-                errors.append(f"Please select a complete date of birth for {first or last}.")
+            age_raw = (age_raw or "").strip()
+            if not age_raw:
                 member_dob = None
+            else:
+                try:
+                    member_dob = db.age_to_approximate_dob(age_raw)
+                except (ValueError, TypeError):
+                    errors.append(f"Please enter a valid age for {first or last}.")
+                    member_dob = None
             member_rows.append(
                 {
                     "first_name": first,
