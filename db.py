@@ -231,18 +231,30 @@ def init_db():
         "anonymized_at": "TEXT",
         "designate_id_verified": "INTEGER NOT NULL DEFAULT 0",
     })
-    added = _ensure_columns(conn, "households", {
+    _ensure_columns(conn, "households", {
         "card_made_at": "TEXT",
     })
-    if "card_made_at" in added:
-        # Backfill every household that already existed before this
-        # feature shipped as "already done" -- most already have a real
-        # physical card, just never tracked in the system, so a bare NULL
-        # here would otherwise make New Registrations show the entire
-        # historical household list as needing one. Only households
-        # created from this point on start NULL and correctly show up
-        # until checked off.
+    # Backfill every household that already existed before this feature
+    # shipped as "already done" -- most already have a real physical card,
+    # just never tracked in the system, so a bare NULL here would
+    # otherwise make New Registrations show the entire historical
+    # household list as needing one. Only households created from this
+    # point on start NULL and correctly show up until checked off.
+    #
+    # Tracked via a settings flag rather than "did _ensure_columns just
+    # add the column" -- that check only catches the column's very first
+    # deploy. An earlier version of this feature added the column without
+    # this backfill; on any database that already deployed that version,
+    # the column exists by the time this code runs, so that check would
+    # silently skip the backfill forever. The settings flag makes this
+    # idempotent and safe to re-check on every startup regardless of
+    # which deploy actually introduced the column.
+    if not conn.execute("SELECT 1 FROM settings WHERE key = 'card_made_backfill_done'").fetchone():
         conn.execute("UPDATE households SET card_made_at = ? WHERE card_made_at IS NULL", (now_iso(),))
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES ('card_made_backfill_done', '1') "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+        )
     conn.commit()
     conn.close()
 
