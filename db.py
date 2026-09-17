@@ -403,132 +403,24 @@ def next_household_number(conn):
 
 # ---------- Timeslots ----------
 
-TIMESLOT_CAPACITY = 30                # true physical/staffing capacity of a slot
-DEFAULT_TIMESLOT_ACTIVE_CAPACITY = 25  # default for the admin-editable setting below
-
-
-def get_timeslot_active_capacity():
-    """Capacity used for assignment decisions -- admin-editable (Timeslots
-    page), capped to TIMESLOT_CAPACITY. Defaults a bit below the true
-    capacity as a buffer, since "active" excludes stale households who
-    could still return anytime; an admin comfortable with that risk can
-    raise it up to the full TIMESLOT_CAPACITY."""
-    raw = get_setting("timeslot_active_capacity")
-    if raw is None:
-        return DEFAULT_TIMESLOT_ACTIVE_CAPACITY
-    try:
-        value = int(raw)
-    except (TypeError, ValueError):
-        return DEFAULT_TIMESLOT_ACTIVE_CAPACITY
-    return max(1, min(value, TIMESLOT_CAPACITY))
-
-
-def set_timeslot_active_capacity(value):
-    """Returns True if saved, False if value was out of the allowed 1..TIMESLOT_CAPACITY range."""
-    try:
-        value = int(value)
-    except (TypeError, ValueError):
-        return False
-    if not (1 <= value <= TIMESLOT_CAPACITY):
-        return False
-    set_setting("timeslot_active_capacity", str(value))
-    return True
-
-
-def _timeslot_count(conn, timeslot_id):
-    # Anonymized households (PII removed, visit history kept for grant
-    # reporting) no longer count against capacity -- they've effectively
-    # left the schedule, freeing their spot for someone else.
-    return conn.execute(
-        "SELECT COUNT(*) FROM households WHERE assigned_timeslot_id = ? AND anonymized_at IS NULL",
-        (timeslot_id,),
-    ).fetchone()[0]
-
-
-def _timeslot_active_count(conn, timeslot_id):
-    """Households assigned to this slot who are neither anonymized nor
-    stale (a visit -- or, if they've never visited, their registration --
-    within the last 6 months). A slot can look full on paper while most of
-    its households have quietly stopped coming; this is the number that
-    reflects real, current load for assignment purposes. Unlike
-    anonymizing, staleness is reversible -- a quiet household could show up
-    again anytime -- which is why assignment uses a reduced, admin-editable
-    buffer (get_timeslot_active_capacity()) against this count rather than
-    the full TIMESLOT_CAPACITY."""
-    cutoff = (datetime.date.today() - datetime.timedelta(days=180)).isoformat()
-    return conn.execute(
-        """
-        SELECT COUNT(*) FROM households h
-        WHERE h.assigned_timeslot_id = ?
-          AND h.anonymized_at IS NULL
-          AND COALESCE(
-                (SELECT MAX(v.visit_date) FROM visits v WHERE v.household_id = h.id),
-                substr(h.created_at, 1, 10)
-              ) >= ?
-        """,
-        (timeslot_id, cutoff),
-    ).fetchone()[0]
-
-
 def assign_timeslot(conn, pref_ids):
-    """Pick the least-populated of the given timeslot ids (rank order) that
-    still has room under get_timeslot_active_capacity(), counting only
-    currently-active households (see _timeslot_active_count) -- a slot full
-    of households that stopped coming months ago is treated as having real
-    room, not as full. Ties go to the earlier (higher-ranked) preference,
-    since we only ever replace the current best on a strictly lower count.
-    If all 3 preferences are full, falls back to the least-populated active
-    timeslot with room anywhere in the schedule. Returns None if every
-    active timeslot is at capacity. Must be called with an open connection
-    from the same transaction as the household insert that will follow, so
-    count-then-assign is atomic against concurrent registrations.
-    """
-    active_capacity = get_timeslot_active_capacity()
-    best_id = None
-    best_count = None
-    seen = set()
+    """Assigns whichever of the ranked preferences was actually filled in,
+    in rank order -- no capacity limit or redirection to a different slot.
+    This app used to cap how many households could be assigned to a slot
+    (a soft admin-editable buffer under a hard 30-household ceiling) and
+    silently redirect anyone over that to whatever slot had room -- but
+    real slots run 40-250+ active households, and every single one was
+    permanently "full" against that old ceiling, so every new
+    registrant regardless of what they actually picked was landing on
+    whatever near-empty slot the fallback could still find room in.
+    Removed entirely rather than raised, since in practice this pantry
+    serves everyone who's assigned to a slot regardless of how many that
+    is -- there's no real capacity limit to enforce. Returns None if no
+    preference was given at all."""
     for tid in pref_ids:
-        if not tid or tid in seen:
-            continue
-        seen.add(tid)
-        count = _timeslot_active_count(conn, tid)
-        if count >= active_capacity:
-            continue
-        if best_count is None or count < best_count:
-            best_id, best_count = tid, count
-    if best_id is not None:
-        return best_id
-
-    # All 3 preferences were full (or none given) — fall back to whatever
-    # active slot has the most room.
-    row = conn.execute(
-        """
-        SELECT id FROM (
-            SELECT t.id AS id,
-                   (SELECT COUNT(*) FROM households h
-                    WHERE h.assigned_timeslot_id = t.id AND h.anonymized_at IS NULL
-                      AND COALESCE(
-                            (SELECT MAX(v2.visit_date) FROM visits v2 WHERE v2.household_id = h.id),
-                            substr(h.created_at, 1, 10)
-                          ) >= ?) AS cnt
-            FROM timeslots t WHERE t.active = 1
-        ) WHERE cnt < ?
-        ORDER BY cnt ASC LIMIT 1
-        """,
-        ((datetime.date.today() - datetime.timedelta(days=180)).isoformat(), active_capacity),
-    ).fetchone()
-    return row["id"] if row else None
-
-
-def assign_mandatory_timeslot(conn, timeslot_id):
-    """For a household that can only make ONE specific time (e.g. a fixed
-    work schedule) rather than picking from a ranked list of preferences.
-    Both capacity checks in assign_timeslot() (the soft admin-editable
-    buffer AND the true TIMESLOT_CAPACITY) exist only to support choosing
-    among several workable options -- they don't apply here, since there is
-    no other option to redirect to or leave unassigned in favor of. Always
-    assigns the requested slot; returns None only if no slot was given."""
-    return timeslot_id or None
+        if tid:
+            return tid
+    return None
 
 
 def _timeslot_label_by_id(conn, timeslot_id):
@@ -555,11 +447,6 @@ def list_timeslots(active_only=False):
         for r in rows:
             d = dict(r)
             d["label"] = timeslot_label(d["day_of_week"], d["start_time"], d["end_time"])
-            # Real current load (excludes stale households too) -- this is
-            # what new registrants are actually weighed against, which can
-            # be well below assigned_count if a slot is full of households
-            # that stopped coming.
-            d["active_count"] = _timeslot_active_count(conn, d["id"])
             result.append(d)
         return result
     finally:
@@ -726,19 +613,18 @@ def create_household(primary_first_name, primary_last_name, phone, email,
     rows with relationship='Self'. pref_timeslot_ids: up to 3 timeslot ids in
     rank order. designate_* fields describe someone other than a household
     member who's allowed to pick up on the household's behalf (e.g. a
-    caregiver). only_one_timeslot: the household can genuinely only make
-    pref_timeslot_ids[0] (e.g. a fixed work schedule) rather than it just
-    being their top pick among several workable options -- see
-    assign_mandatory_timeslot(). Returns the new household id.
+    caregiver). only_one_timeslot: purely informational -- the household
+    indicated it can genuinely only make pref_timeslot_ids[0] (e.g. a fixed
+    work schedule) rather than it just being their top pick among several
+    workable options; doesn't change assignment, which always just takes
+    the first preference given regardless (see assign_timeslot()). Returns
+    the new household id.
     """
     conn = get_db()
     try:
         ts = now_iso()
         pref1, pref2, pref3 = (list(pref_timeslot_ids) + [None, None, None])[:3]
-        if only_one_timeslot:
-            assigned_timeslot_id = assign_mandatory_timeslot(conn, pref1)
-        else:
-            assigned_timeslot_id = assign_timeslot(conn, [pref1, pref2, pref3])
+        assigned_timeslot_id = assign_timeslot(conn, [pref1, pref2, pref3])
         household_code = str(next_household_number(conn))
 
         cur = conn.execute(

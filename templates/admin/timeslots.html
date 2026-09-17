@@ -5,44 +5,18 @@
   {% include "admin/_nav.html" %}
   <h1>Weekly Pickup Timeslots</h1>
   <p class="subtitle">
-    Households rank 3 of these at registration and are assigned whichever has the least real,
-    current activity. "Active" excludes households who haven't picked up (or, if new, registered)
-    in over 6 months — a slot can look full but still take new registrants if most of its
-    households have gone quiet. Assignment stops at {{ active_capacity }} active households per
-    slot, kept a bit under the true {{ capacity }}-household capacity as a buffer in case
-    quiet households come back.
+    Households rank up to 3 of these at registration and are assigned their top choice, in rank
+    order — there's no capacity limit here; everyone assigned to a slot is served regardless of
+    how many that is.
   </p>
-
-  <div class="card">
-    <h2>Assignment Capacity</h2>
-    <p class="hint">
-      How many active households a slot can hold before it's treated as full for new
-      registrants. Must be between 1 and {{ capacity }} (the true physical capacity per slot).
-    </p>
-    <form method="post" style="text-align:center;">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <input type="hidden" name="action" value="set_active_capacity">
-      <label for="active_capacity">Active Capacity</label>
-      <input type="number" id="active_capacity" name="active_capacity" min="1" max="{{ capacity }}"
-             value="{{ active_capacity }}" required class="input-narrow"
-             oninput="if (this.value !== '' && Number(this.value) > {{ capacity }}) this.value = '{{ capacity }}';">
-      <button type="submit" class="btn btn-primary" style="width:auto; margin-top:1rem;">Save</button>
-    </form>
-  </div>
 
   <div class="table-scroll">
     <table class="table-centered">
-      <tr><th>Timeslot</th><th>Total Registered</th><th>Active (used for assignment)</th><th>Status</th><th></th></tr>
+      <tr><th>Timeslot</th><th>Households Assigned</th><th>Status</th><th></th></tr>
       {% for t in rows %}
         <tr>
           <td>{{ t.label }}</td>
           <td>{{ t.assigned_count }}</td>
-          <td>
-            <span class="timeslot-count-cell">
-              <span class="timeslot-count">{{ t.active_count }} / {{ active_capacity }}</span>
-              {% if t.active_count >= active_capacity %}<span class="status-badge status-red">FULL</span>{% endif %}
-            </span>
-          </td>
           <td>
             {% if t.active %}
               <span class="status-badge status-green">Active</span>

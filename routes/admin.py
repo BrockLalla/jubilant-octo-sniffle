@@ -671,16 +671,10 @@ def timeslots():
                 flash("Timeslot deleted.", "success")
             else:
                 flash("Can't delete a timeslot that households are still assigned to — deactivate it instead.", "error")
-        elif action == "set_active_capacity":
-            if db.set_timeslot_active_capacity(request.form.get("active_capacity", "")):
-                flash("Assignment capacity updated.", "success")
-            else:
-                flash(f"Capacity must be a number between 1 and {db.TIMESLOT_CAPACITY}.", "error")
         return redirect(url_for("admin.timeslots"))
 
     return render_template(
         "admin/timeslots.html", rows=db.list_timeslots(active_only=False), day_names=db.DAY_NAMES,
-        capacity=db.TIMESLOT_CAPACITY, active_capacity=db.get_timeslot_active_capacity(),
     )
 
 

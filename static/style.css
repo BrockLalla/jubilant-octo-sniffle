@@ -180,11 +180,6 @@ input[type=text], input[type=tel], input[type=email], input[type=date], input[ty
   font-family: inherit;
 }
 
-/* A short numeric field (e.g. a capacity setting) shouldn't stretch full width */
-.input-narrow {
-  max-width: 8rem;
-}
-
 /* The calendar/clock popup itself is native OS/browser UI that CSS can't
    resize directly -- this makes the field (and its picker icon) bigger,
    which is the only lever available for nudging the popup larger too. */
@@ -296,18 +291,6 @@ textarea {
 
 /* Timeslots table: the assigned-count fraction and its "FULL" flag,
    centered together as one unit */
-.timeslot-count-cell {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.timeslot-count {
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
 .needs-callout {
   background: #fff3b0;
   border: 3px solid #e6cf5c;

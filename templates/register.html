@@ -38,7 +38,7 @@
 
     {% if timeslots %}
       <h2>Preferred Pickup Times</h2>
-      <p class="hint">Pick up to 3 weekly time slots that work for you. We'll assign whichever is least busy.</p>
+      <p class="hint">Pick up to 3 weekly time slots that work for you, in order of preference. We'll assign your top choice.</p>
 
       <label class="checkbox-label">
         <input type="checkbox" id="only_one_timeslot" name="only_one_timeslot" value="1" {% if form.get('only_one_timeslot') %}checked{% endif %}>
