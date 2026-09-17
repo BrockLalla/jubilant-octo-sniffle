@@ -587,6 +587,20 @@ th {
   white-space: nowrap;
 }
 
+/* New Registrations: keep each row to one line -- the timeslot label
+   ("Tuesday, 3:00 PM - 4:00 PM") is long enough to wrap onto 2 lines at
+   the default table padding, which roughly doubles row height with a
+   long list to scan through. */
+.new-registrations-table td {
+  white-space: nowrap;
+  padding: 0.4rem 0.6rem;
+}
+
+.new-registrations-table .row-done {
+  background: #eef7ee;
+  color: #5a6b5a;
+}
+
 /* All 5 columns forced to equal width via table-layout: fixed, so the
    table never has to grow past the page to fit a long email address --
    auto layout would otherwise let Email/Username dominate and squeeze
