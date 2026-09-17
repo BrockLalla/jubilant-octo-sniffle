@@ -231,9 +231,18 @@ def init_db():
         "anonymized_at": "TEXT",
         "designate_id_verified": "INTEGER NOT NULL DEFAULT 0",
     })
-    _ensure_columns(conn, "households", {
+    added = _ensure_columns(conn, "households", {
         "card_made_at": "TEXT",
     })
+    if "card_made_at" in added:
+        # Backfill every household that already existed before this
+        # feature shipped as "already done" -- most already have a real
+        # physical card, just never tracked in the system, so a bare NULL
+        # here would otherwise make New Registrations show the entire
+        # historical household list as needing one. Only households
+        # created from this point on start NULL and correctly show up
+        # until checked off.
+        conn.execute("UPDATE households SET card_made_at = ? WHERE card_made_at IS NULL", (now_iso(),))
     conn.commit()
     conn.close()
 
@@ -241,12 +250,19 @@ def init_db():
 def _ensure_columns(conn, table, columns):
     """Adds any missing columns to an already-existing table (ALTER TABLE ADD
     COLUMN), so schema changes don't require wiping real data that's already
-    on disk. `columns` is {column_name: sql_type_and_default}.
-    """
+    on disk. `columns` is {column_name: sql_type_and_default}. Returns the
+    set of column names that were actually newly added (empty on every
+    later call, once the column already exists) -- lets a caller backfill
+    a sensible default for existing rows exactly once, the moment a new
+    column is introduced, without re-running that backfill on every
+    startup afterward."""
     existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+    added = set()
     for name, definition in columns.items():
         if name not in existing:
             conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {definition}")
+            added.add(name)
+    return added
 
 
 def now_iso():
