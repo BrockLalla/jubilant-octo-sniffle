@@ -826,6 +826,40 @@ def list_all_households(sort=None, direction="asc"):
         conn.close()
 
 
+def list_recent_registrations(start_date=None, end_date=None):
+    """Households registered in the given date range, oldest first -- built
+    for the weekly workflow of reviewing new signups and making a physical
+    ID card for each (see routes/admin.py, which defaults this to the last
+    7 days). created_at is a full timestamp, not just a date, so end_date
+    is padded to the end of that day for an inclusive same-day match."""
+    conn = get_db()
+    try:
+        q = (
+            "SELECT h.*, (h.primary_first_name || ' ' || h.primary_last_name) AS primary_name, "
+            "(SELECT COUNT(*) FROM members m WHERE m.household_id = h.id) AS member_count "
+            "FROM households h"
+        )
+        clauses, params = [], []
+        if start_date:
+            clauses.append("h.created_at >= ?")
+            params.append(start_date)
+        if end_date:
+            clauses.append("h.created_at <= ?")
+            params.append(end_date + "T23:59:59")
+        if clauses:
+            q += " WHERE " + " AND ".join(clauses)
+        q += " ORDER BY h.created_at ASC"
+        rows = conn.execute(q, params).fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            d["assigned_timeslot_label"] = _timeslot_label_by_id(conn, d.get("assigned_timeslot_id"))
+            result.append(d)
+        return result
+    finally:
+        conn.close()
+
+
 def update_household(household_id, primary_first_name, primary_last_name, phone, email,
                       assigned_timeslot_id, designate_first_name=None,
                       designate_last_name=None, designate_relationship=None,

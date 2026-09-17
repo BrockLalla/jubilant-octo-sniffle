@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}New Registrations{% endblock %}
+{% block page_class %}page-wide{% endblock %}
+{% block content %}
+  {% set active = 'new_registrations' %}
+  {% include "admin/_nav.html" %}
+  <h1>New Registrations</h1>
+  <p class="subtitle">Households registered in this date range — for the weekly card-making review.</p>
+
+  <form method="get" class="card">
+    <label>Start Date</label>
+    <input type="date" name="start_date" value="{{ start_date }}" min="1900-01-01" max="2099-12-31">
+    <label>End Date</label>
+    <input type="date" name="end_date" value="{{ end_date }}" min="1900-01-01" max="2099-12-31">
+    <div class="btn-row" style="margin-top:1rem;">
+      <button type="submit" class="btn btn-primary">Filter</button>
+      <a class="btn btn-secondary" href="{{ url_for('admin.new_registrations') }}">Clear</a>
+    </div>
+  </form>
+
+  {% if defaulted_range %}
+    <p class="hint">Showing the last 7 days by default — set an earlier start date above to see more.</p>
+  {% endif %}
+
+  <div class="table-scroll">
+    <table class="table-centered">
+      <tr>
+        <th>Household Code</th>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Registered</th>
+        <th>Assigned Timeslot</th>
+        <th>ID Verified</th>
+        <th>Diapers</th>
+        <th>Formula</th>
+        <th></th>
+      </tr>
+      {% for h in rows %}
+        <tr>
+          <td>{{ h.household_code }}</td>
+          <td>{{ h.primary_name }}</td>
+          <td>{{ h.phone or '' }}</td>
+          <td style="white-space:nowrap;">{{ h.created_at[:10] }}</td>
+          <td>{{ h.assigned_timeslot_label or 'Not yet assigned' }}</td>
+          <td>{{ '✅' if h.id_verified else '' }}</td>
+          <td>{{ '🧷' if h.needs_diapers else '' }}</td>
+          <td>{{ '🍼' if h.needs_formula else '' }}</td>
+          <td><a class="btn btn-small btn-secondary" href="{{ url_for('admin.household_detail', household_id=h.id) }}">View / Edit</a></td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% if not rows %}
+    <p class="muted">No new registrations in this range.</p>
+  {% endif %}
+{% endblock %}

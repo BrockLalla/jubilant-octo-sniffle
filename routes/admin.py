@@ -492,6 +492,24 @@ def households():
     )
 
 
+@bp.route("/new-registrations")
+@login_required
+def new_registrations():
+    start_date = request.args.get("start_date", "").strip() or None
+    end_date = request.args.get("end_date", "").strip() or None
+    # Default to the last 7 days -- matches the weekly review workflow
+    # (check once after pantry hours, make a card for everyone new since
+    # last time). An explicit date range in the filter overrides this.
+    defaulted_range = not start_date and not end_date
+    if defaulted_range:
+        start_date = (datetime.date.today() - datetime.timedelta(days=7)).isoformat()
+    rows = db.list_recent_registrations(start_date, end_date)
+    return render_template(
+        "admin/new_registrations.html", rows=rows, start_date=start_date or "", end_date=end_date or "",
+        defaulted_range=defaulted_range,
+    )
+
+
 @bp.route("/households/<int:household_id>", methods=["GET", "POST"])
 @login_required
 def household_detail(household_id):
