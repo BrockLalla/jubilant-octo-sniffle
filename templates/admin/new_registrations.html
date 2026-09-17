@@ -5,7 +5,10 @@
   {% set active = 'new_registrations' %}
   {% include "admin/_nav.html" %}
   <h1>New Registrations</h1>
-  <p class="subtitle">Households registered in this date range — for the weekly card-making review.</p>
+  <p class="subtitle">
+    Households registered in this date range, plus anyone who doesn't have a card made yet regardless
+    of when they registered — for the weekly card-making review.
+  </p>
 
   <form method="get" class="card">
     <label>Start Date</label>
@@ -33,6 +36,7 @@
         <th>ID Verified</th>
         <th>Diapers</th>
         <th>Formula</th>
+        <th>Card Made</th>
         <th></th>
       </tr>
       {% for h in rows %}
@@ -45,6 +49,15 @@
           <td>{{ '✅' if h.id_verified else '' }}</td>
           <td>{{ '🧷' if h.needs_diapers else '' }}</td>
           <td>{{ '🍼' if h.needs_formula else '' }}</td>
+          <td>
+            <form method="post" action="{{ url_for('admin.toggle_card_made', household_id=h.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="start_date" value="{{ start_date }}">
+              <input type="hidden" name="end_date" value="{{ end_date }}">
+              <input type="checkbox" name="made" value="1" class="checkbox-lg" onchange="this.form.submit();"
+                     {% if h.card_made_at %}checked{% endif %}>
+            </form>
+          </td>
           <td><a class="btn btn-small btn-secondary" href="{{ url_for('admin.household_detail', household_id=h.id) }}">View / Edit</a></td>
         </tr>
       {% endfor %}

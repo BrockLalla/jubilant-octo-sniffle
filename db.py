@@ -231,6 +231,9 @@ def init_db():
         "anonymized_at": "TEXT",
         "designate_id_verified": "INTEGER NOT NULL DEFAULT 0",
     })
+    _ensure_columns(conn, "households", {
+        "card_made_at": "TEXT",
+    })
     conn.commit()
     conn.close()
 
@@ -827,11 +830,15 @@ def list_all_households(sort=None, direction="asc"):
 
 
 def list_recent_registrations(start_date=None, end_date=None):
-    """Households registered in the given date range, oldest first -- built
-    for the weekly workflow of reviewing new signups and making a physical
-    ID card for each (see routes/admin.py, which defaults this to the last
-    7 days). created_at is a full timestamp, not just a date, so end_date
-    is padded to the end of that day for an inclusive same-day match."""
+    """Households registered in the given date range, PLUS any household
+    with no card made yet regardless of how old it is -- oldest first.
+    Built for the weekly workflow of reviewing new signups and making a
+    physical ID card for each (see routes/admin.py, which defaults the
+    date range to the last 7 days); the "no card yet" half of the OR is
+    what keeps a straggler from silently aging out of view just because a
+    week got missed. created_at is a full timestamp, not just a date, so
+    end_date is padded to the end of that day for an inclusive same-day
+    match."""
     conn = get_db()
     try:
         q = (
@@ -839,15 +846,15 @@ def list_recent_registrations(start_date=None, end_date=None):
             "(SELECT COUNT(*) FROM members m WHERE m.household_id = h.id) AS member_count "
             "FROM households h"
         )
-        clauses, params = [], []
+        date_clauses, params = [], []
         if start_date:
-            clauses.append("h.created_at >= ?")
+            date_clauses.append("h.created_at >= ?")
             params.append(start_date)
         if end_date:
-            clauses.append("h.created_at <= ?")
+            date_clauses.append("h.created_at <= ?")
             params.append(end_date + "T23:59:59")
-        if clauses:
-            q += " WHERE " + " AND ".join(clauses)
+        if date_clauses:
+            q += " WHERE (" + " AND ".join(date_clauses) + " OR h.card_made_at IS NULL)"
         q += " ORDER BY h.created_at ASC"
         rows = conn.execute(q, params).fetchall()
         result = []
@@ -856,6 +863,18 @@ def list_recent_registrations(start_date=None, end_date=None):
             d["assigned_timeslot_label"] = _timeslot_label_by_id(conn, d.get("assigned_timeslot_id"))
             result.append(d)
         return result
+    finally:
+        conn.close()
+
+
+def set_card_made(household_id, made):
+    conn = get_db()
+    try:
+        conn.execute(
+            "UPDATE households SET card_made_at = ? WHERE id = ?",
+            (now_iso() if made else None, household_id),
+        )
+        conn.commit()
     finally:
         conn.close()
 
