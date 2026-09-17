@@ -18,17 +18,31 @@ document.addEventListener("DOMContentLoaded", function () {
       hidden.value = checkbox.checked ? "1" : "0";
     });
 
-    // Age is otherwise optional for a household member, but a child's age
-    // matters too much to skip -- it's what the under-2 diaper check
-    // depends on. Only enforced once "Child" is actually picked, so
-    // adult members (spouse, parent, other) stay optional as before.
+    // A child's row shows separate Years/Months boxes instead of the
+    // single Age field everyone else uses -- a "Child" can be any age,
+    // and months matter specifically under 2 for the diaper check.
+    // Switching away from Child clears whichever group is now hidden, so
+    // a stale value from before switching never gets submitted alongside
+    // the visible one.
     var relationshipSelect = row.querySelector(".member-relationship-select");
+    var adultGroup = row.querySelector(".member-age-adult-group");
+    var childGroup = row.querySelector(".member-age-child-group");
     var ageInput = row.querySelector(".member-age-input");
-    function syncAgeRequired() {
-      ageInput.required = relationshipSelect.value === "Child";
+    var yearsInput = row.querySelector(".member-age-years-input");
+    var monthsInput = row.querySelector(".member-age-months-input");
+    function syncAgeGroup() {
+      var isChild = relationshipSelect.value === "Child";
+      adultGroup.hidden = isChild;
+      childGroup.hidden = !isChild;
+      if (isChild) {
+        ageInput.value = "";
+      } else {
+        yearsInput.value = "";
+        monthsInput.value = "";
+      }
     }
-    relationshipSelect.addEventListener("change", syncAgeRequired);
-    syncAgeRequired();
+    relationshipSelect.addEventListener("change", syncAgeGroup);
+    syncAgeGroup();
 
     container.appendChild(clone);
   }

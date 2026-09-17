@@ -361,37 +361,33 @@ def combine_date_parts(year, month, day):
         raise ValueError("Invalid date")
 
 
-def age_to_approximate_dob(age, unit="years"):
-    """Approximates a date of birth from an age in years OR months (months
-    is for a child under 2, where "0 years old" isn't precise enough to
-    tell a 2-month-old from a 20-month-old for the under-2 diaper check --
-    see routes/public.py's registration form). Used by the public
-    registration form, which asks for age rather than an exact birthdate
-    (simpler to fill in, and doesn't collect a specific birthdate the app
-    doesn't actually need). Grant report age brackets and the under-2
-    diaper check both key off date_of_birth and need it to age forward
-    correctly as real time passes, so this reconstructs a real date rather
-    than storing a static age that would go stale. Raises ValueError for a
-    negative or implausible age."""
-    age = int(age)
-    today = datetime.date.today()
-
-    if unit == "months":
-        if not (0 <= age <= 23):
-            raise ValueError("Implausible age in months")
-        total_months = today.year * 12 + (today.month - 1) - age
-        year, month0 = divmod(total_months, 12)
-        month = month0 + 1
-        day = min(today.day, calendar.monthrange(year, month)[1])
-        return datetime.date(year, month, day).isoformat()
-
-    if not (0 <= age <= 119):
+def age_to_approximate_dob(years=0, months=0):
+    """Approximates a date of birth from an age given as years and/or
+    months (either can be 0/blank) -- used by the public registration
+    form, which asks for age rather than an exact birthdate (simpler to
+    fill in, and doesn't collect a specific birthdate the app doesn't
+    actually need). A months component matters specifically for a child
+    under 2, where "0 years old" isn't precise enough to tell a
+    2-month-old from a 20-month-old for the under-2 diaper check -- for
+    everyone else, months is just left at 0. Grant report age brackets
+    and that diaper check both key off date_of_birth and need it to age
+    forward correctly as real time passes, so this reconstructs a real
+    date rather than storing a static age that would go stale. Raises
+    ValueError for a negative or implausible combined age."""
+    years = int(years or 0)
+    months = int(months or 0)
+    if years < 0 or months < 0:
+        raise ValueError("Age can't be negative")
+    total_months = years * 12 + months
+    if not (0 <= total_months <= 119 * 12):
         raise ValueError("Implausible age")
-    try:
-        return today.replace(year=today.year - age).isoformat()
-    except ValueError:
-        # today is Feb 29 and (today.year - age) isn't a leap year.
-        return today.replace(year=today.year - age, day=28).isoformat()
+
+    today = datetime.date.today()
+    total = today.year * 12 + (today.month - 1) - total_months
+    year, month0 = divmod(total, 12)
+    month = month0 + 1
+    day = min(today.day, calendar.monthrange(year, month)[1])
+    return datetime.date(year, month, day).isoformat()
 
 
 def next_household_number(conn):

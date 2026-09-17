@@ -135,9 +135,7 @@ def register():
             errors.append("Please select the one time you can make before checking \"I can only make this time.\"")
 
         try:
-            primary_dob = db.age_to_approximate_dob(
-                request.form.get("primary_age", ""), request.form.get("primary_age_unit", "years"),
-            )
+            primary_dob = db.age_to_approximate_dob(request.form.get("primary_age", ""))
         except (ValueError, TypeError):
             primary_dob = None
             errors.append("Please enter the primary applicant's age.")
@@ -145,7 +143,8 @@ def register():
         member_first_names = request.form.getlist("member_first_name[]")
         member_last_names = request.form.getlist("member_last_name[]")
         member_ages = request.form.getlist("member_age[]")
-        member_age_units = request.form.getlist("member_age_unit[]")
+        member_age_years = request.form.getlist("member_age_years[]")
+        member_age_months = request.form.getlist("member_age_months[]")
         member_rels = request.form.getlist("member_relationship[]")
         # A hidden field (kept in sync with the checkbox by register.js)
         # guarantees exactly one "0"/"1" entry per row, so this list always
@@ -163,28 +162,40 @@ def register():
                 "id_verified": id_verified,
             }
         ]
-        for first, last, age_raw, age_unit, rel, verified in zip(
-            member_first_names, member_last_names, member_ages, member_age_units, member_rels,
-            member_id_verified,
+        for first, last, age_raw, years_raw, months_raw, rel, verified in zip(
+            member_first_names, member_last_names, member_ages, member_age_years, member_age_months,
+            member_rels, member_id_verified,
         ):
             first, last = first.strip(), last.strip()
             if not first and not last:
                 continue
-            age_raw = (age_raw or "").strip()
             rel = rel.strip() or "Other"
-            if not age_raw:
-                member_dob = None
-                # Age is otherwise optional for a member, but a child's is
-                # what the under-2 diaper check depends on -- worth
-                # actually blocking on, not just a client-side hint.
-                if rel == "Child":
-                    errors.append(f"Please enter {first or last}'s age — required for a child.")
-            else:
-                try:
-                    member_dob = db.age_to_approximate_dob(age_raw, age_unit)
-                except (ValueError, TypeError):
-                    errors.append(f"Please enter a valid age for {first or last}.")
+            if rel == "Child":
+                # A child's row shows separate Years/Months boxes instead
+                # of the single Age field everyone else uses -- ages under
+                # 2 need month precision for the under-2 diaper check, and
+                # a "Child" can be any age, so both boxes are offered
+                # together rather than guessing which one applies.
+                years_raw, months_raw = (years_raw or "").strip(), (months_raw or "").strip()
+                if not years_raw and not months_raw:
                     member_dob = None
+                    errors.append(f"Please enter {first or last}'s age — required for a child.")
+                else:
+                    try:
+                        member_dob = db.age_to_approximate_dob(years_raw or 0, months_raw or 0)
+                    except (ValueError, TypeError):
+                        errors.append(f"Please enter a valid age for {first or last}.")
+                        member_dob = None
+            else:
+                age_raw = (age_raw or "").strip()
+                if not age_raw:
+                    member_dob = None
+                else:
+                    try:
+                        member_dob = db.age_to_approximate_dob(age_raw)
+                    except (ValueError, TypeError):
+                        errors.append(f"Please enter a valid age for {first or last}.")
+                        member_dob = None
             member_rows.append(
                 {
                     "first_name": first,

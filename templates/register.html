@@ -15,14 +15,7 @@
     <input type="text" id="primary_last_name" name="primary_last_name" value="{{ form.get('primary_last_name', '') }}" required>
 
     <label for="primary_age">Age</label>
-    <div class="age-input-row">
-      <input type="number" id="primary_age" name="primary_age" min="0" max="119" value="{{ form.get('primary_age', '') }}" required>
-      <select name="primary_age_unit" id="primary_age_unit">
-        <option value="years" {% if form.get('primary_age_unit', 'years') == 'years' %}selected{% endif %}>Years</option>
-        <option value="months" {% if form.get('primary_age_unit') == 'months' %}selected{% endif %}>Months</option>
-      </select>
-    </div>
-    <p class="hint">Use Months for a baby under 2 — exact age matters for diaper needs.</p>
+    <input type="number" id="primary_age" name="primary_age" min="0" max="119" value="{{ form.get('primary_age', '') }}" required>
 
     <label for="phone">Phone Number</label>
     <input type="tel" id="phone" name="phone" value="{{ form.get('phone', '') }}" placeholder="(optional, helps volunteers find you at check-in)">
@@ -129,15 +122,6 @@
       <input type="text" name="member_first_name[]">
       <label>Last Name</label>
       <input type="text" name="member_last_name[]">
-      <label>Age</label>
-      <div class="age-input-row">
-        <input type="number" class="member-age-input" name="member_age[]" min="0" max="119">
-        <select class="member-age-unit-select" name="member_age_unit[]">
-          <option value="years" selected>Years</option>
-          <option value="months">Months</option>
-        </select>
-      </div>
-      <p class="hint">Use Months for a baby under 2. Required for a child.</p>
       <label>Relationship to Primary Applicant</label>
       <select class="member-relationship-select" name="member_relationship[]">
         <option value="Spouse">Spouse</option>
@@ -145,6 +129,25 @@
         <option value="Parent">Parent</option>
         <option value="Other">Other</option>
       </select>
+
+      <div class="member-age-adult-group">
+        <label>Age</label>
+        <input type="number" class="member-age-input" name="member_age[]" min="0" max="119">
+      </div>
+      <div class="member-age-child-group" hidden>
+        <label>Age</label>
+        <div class="age-input-row">
+          <div class="age-input-col">
+            <label class="hint">Years</label>
+            <input type="number" class="member-age-years-input" name="member_age_years[]" min="0" max="119">
+          </div>
+          <div class="age-input-col">
+            <label class="hint">Months</label>
+            <input type="number" class="member-age-months-input" name="member_age_months[]" min="0" max="11">
+          </div>
+        </div>
+        <p class="hint">Fill in Months too for a baby under 2 — exact age matters for diaper needs.</p>
+      </div>
       <label class="checkbox-label">
         <input type="checkbox" class="member-id-verified-checkbox">
         <input type="hidden" name="member_id_verified[]" value="0">
