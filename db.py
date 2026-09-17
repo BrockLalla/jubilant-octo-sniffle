@@ -7,6 +7,7 @@ import os
 import sys
 import sqlite3
 import datetime
+import calendar
 import math
 import secrets
 import shutil
@@ -360,20 +361,32 @@ def combine_date_parts(year, month, day):
         raise ValueError("Invalid date")
 
 
-def age_to_approximate_dob(age):
-    """Approximates a date of birth from an age in years -- used by the
-    public registration form, which asks new registrants for their age
-    rather than an exact birthdate (simpler to fill in, and doesn't
-    collect a specific birthdate the app doesn't actually need). Grant
-    report age brackets and the under-2 diaper check both key off
-    date_of_birth and need it to age forward correctly as real time
-    passes, so this reconstructs a real date (today's month/day, `age`
-    years ago) rather than storing a static age that would go stale.
-    Raises ValueError for a negative or implausible age."""
+def age_to_approximate_dob(age, unit="years"):
+    """Approximates a date of birth from an age in years OR months (months
+    is for a child under 2, where "0 years old" isn't precise enough to
+    tell a 2-month-old from a 20-month-old for the under-2 diaper check --
+    see routes/public.py's registration form). Used by the public
+    registration form, which asks for age rather than an exact birthdate
+    (simpler to fill in, and doesn't collect a specific birthdate the app
+    doesn't actually need). Grant report age brackets and the under-2
+    diaper check both key off date_of_birth and need it to age forward
+    correctly as real time passes, so this reconstructs a real date rather
+    than storing a static age that would go stale. Raises ValueError for a
+    negative or implausible age."""
     age = int(age)
+    today = datetime.date.today()
+
+    if unit == "months":
+        if not (0 <= age <= 23):
+            raise ValueError("Implausible age in months")
+        total_months = today.year * 12 + (today.month - 1) - age
+        year, month0 = divmod(total_months, 12)
+        month = month0 + 1
+        day = min(today.day, calendar.monthrange(year, month)[1])
+        return datetime.date(year, month, day).isoformat()
+
     if not (0 <= age <= 119):
         raise ValueError("Implausible age")
-    today = datetime.date.today()
     try:
         return today.replace(year=today.year - age).isoformat()
     except ValueError:

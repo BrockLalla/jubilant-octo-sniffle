@@ -17,6 +17,19 @@ document.addEventListener("DOMContentLoaded", function () {
     checkbox.addEventListener("change", function () {
       hidden.value = checkbox.checked ? "1" : "0";
     });
+
+    // Age is otherwise optional for a household member, but a child's age
+    // matters too much to skip -- it's what the under-2 diaper check
+    // depends on. Only enforced once "Child" is actually picked, so
+    // adult members (spouse, parent, other) stay optional as before.
+    var relationshipSelect = row.querySelector(".member-relationship-select");
+    var ageInput = row.querySelector(".member-age-input");
+    function syncAgeRequired() {
+      ageInput.required = relationshipSelect.value === "Child";
+    }
+    relationshipSelect.addEventListener("change", syncAgeRequired);
+    syncAgeRequired();
+
     container.appendChild(clone);
   }
 
