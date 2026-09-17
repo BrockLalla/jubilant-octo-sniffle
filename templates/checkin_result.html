@@ -8,11 +8,11 @@
     &nbsp; {{ macros.status_badge(members|length) }}
   </p>
 
-  {% if diapers_aged_out %}
+  {% if supply_needs_aged_out %}
     <div class="card" style="background:#fff8e1; border-color:#c9a227;">
       <p style="margin:0;">📋 <strong>Note:</strong> {{ household.primary_name }}'s children have all turned 2 or
-        older, so they may no longer need diapers. Their profile has been updated — worth a quick check with the
-        family if that doesn't sound right.</p>
+        older, so they may no longer need diapers or formula. Their profile has been updated — worth a quick check
+        with the family if that doesn't sound right.</p>
     </div>
   {% endif %}
 

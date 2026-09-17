@@ -1004,39 +1004,42 @@ def _household_has_member_under_2(conn, household_id):
     return any(age_in_years(r["date_of_birth"]) < 2 for r in rows)
 
 
-def clear_stale_needs_diapers(household_id):
-    """If needs_diapers is set but no current member is actually under 2 --
-    the qualifying child's 2nd birthday passed with no edit ever happening
-    to trigger _recompute_needs_diapers -- clears it and reports that it
-    did. Meant to be called at check-in, so the household's very next visit
-    after aging out both self-corrects the flag and can show a one-time
-    soft notice instead of silently prompting a volunteer to hand out
-    diapers no one needs anymore."""
+def clear_stale_supply_needs(household_id):
+    """If needs_diapers/needs_formula are set but no current member is
+    actually under 2 -- the qualifying child's 2nd birthday passed with no
+    edit ever happening to trigger _recompute_supply_needs -- clears both
+    and reports that it did. Meant to be called at check-in, so the
+    household's very next visit after aging out both self-corrects the
+    flags and can show a one-time soft notice instead of silently
+    prompting a volunteer to hand out diapers/formula no one needs
+    anymore."""
     conn = get_db()
     try:
-        row = conn.execute("SELECT needs_diapers FROM households WHERE id = ?", (household_id,)).fetchone()
-        if not row or not row["needs_diapers"]:
+        row = conn.execute(
+            "SELECT needs_diapers, needs_formula FROM households WHERE id = ?", (household_id,)
+        ).fetchone()
+        if not row or not (row["needs_diapers"] or row["needs_formula"]):
             return False
         if _household_has_member_under_2(conn, household_id):
             return False
-        conn.execute("UPDATE households SET needs_diapers = 0 WHERE id = ?", (household_id,))
+        conn.execute("UPDATE households SET needs_diapers = 0, needs_formula = 0 WHERE id = ?", (household_id,))
         conn.commit()
         return True
     finally:
         conn.close()
 
 
-def _recompute_needs_diapers(conn, household_id):
-    """needs_diapers auto-tracks whether the household currently has any
-    member under 2 -- cleared once the youngest child ages past 2, and
-    restored if a new child under 2 is added, so it can't go stale after a
-    membership edit. Called from every place members change (add/update/
-    delete below); must run on the same connection as that change so it
-    sees it before commit."""
+def _recompute_supply_needs(conn, household_id):
+    """needs_diapers and needs_formula both auto-track whether the
+    household currently has any member under 2 -- cleared once the
+    youngest child ages past 2, and restored if a new child under 2 is
+    added, so neither can go stale after a membership edit. Called from
+    every place members change (add/update/delete below); must run on the
+    same connection as that change so it sees it before commit."""
     has_young_child = _household_has_member_under_2(conn, household_id)
     conn.execute(
-        "UPDATE households SET needs_diapers = ? WHERE id = ?",
-        (1 if has_young_child else 0, household_id),
+        "UPDATE households SET needs_diapers = ?, needs_formula = ? WHERE id = ?",
+        (1 if has_young_child else 0, 1 if has_young_child else 0, household_id),
     )
 
 
@@ -1050,7 +1053,7 @@ def update_member(member_id, first_name, last_name, date_of_birth, relationship,
             (first_name, last_name, date_of_birth or None, relationship, 1 if id_verified else 0, member_id),
         )
         if row:
-            _recompute_needs_diapers(conn, row["household_id"])
+            _recompute_supply_needs(conn, row["household_id"])
         conn.commit()
     finally:
         conn.close()
@@ -1062,7 +1065,7 @@ def delete_member(member_id):
         row = conn.execute("SELECT household_id FROM members WHERE id = ?", (member_id,)).fetchone()
         conn.execute("DELETE FROM members WHERE id = ?", (member_id,))
         if row:
-            _recompute_needs_diapers(conn, row["household_id"])
+            _recompute_supply_needs(conn, row["household_id"])
         conn.commit()
     finally:
         conn.close()
@@ -1126,7 +1129,7 @@ def add_member(household_id, first_name, last_name, date_of_birth, relationship,
             "UPDATE members SET member_code = ? WHERE id = ?",
             (f"M-{member_id:05d}", member_id),
         )
-        _recompute_needs_diapers(conn, household_id)
+        _recompute_supply_needs(conn, household_id)
         conn.commit()
         return member_id
     finally:

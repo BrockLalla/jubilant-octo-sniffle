@@ -309,8 +309,8 @@ def checkin_confirm(household_id):
     if not data:
         flash("Household not found.", "error")
         return redirect(url_for("public.checkin"))
-    diapers_aged_out = db.clear_stale_needs_diapers(household_id)
-    if diapers_aged_out:
+    supply_needs_aged_out = db.clear_stale_supply_needs(household_id)
+    if supply_needs_aged_out:
         data = db.get_household(household_id)
     existing_visit = db.visit_this_week(household_id)
     return render_template(
@@ -321,7 +321,7 @@ def checkin_confirm(household_id):
         existing_visit_display=db.format_date_nice(existing_visit["visit_date"]) if existing_visit else None,
         blocked=bool(existing_visit),
         success=False,
-        diapers_aged_out=diapers_aged_out,
+        supply_needs_aged_out=supply_needs_aged_out,
     )
 
 
@@ -341,8 +341,8 @@ def checkin_do(household_id):
             db.mark_designate_id_verified(household_id)
         data = db.get_household(household_id)
 
-    diapers_aged_out = db.clear_stale_needs_diapers(household_id)
-    if diapers_aged_out:
+    supply_needs_aged_out = db.clear_stale_supply_needs(household_id)
+    if supply_needs_aged_out:
         data = db.get_household(household_id)
 
     existing_visit = db.visit_this_week(household_id)
@@ -355,7 +355,7 @@ def checkin_do(household_id):
             existing_visit_display=db.format_date_nice(existing_visit["visit_date"]),
             blocked=True,
             success=False,
-            diapers_aged_out=diapers_aged_out,
+            supply_needs_aged_out=supply_needs_aged_out,
         )
 
     db.record_visit(household_id)
@@ -366,5 +366,5 @@ def checkin_do(household_id):
         existing_visit=None,
         blocked=False,
         success=True,
-        diapers_aged_out=diapers_aged_out,
+        supply_needs_aged_out=supply_needs_aged_out,
     )
