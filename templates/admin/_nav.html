@@ -1,10 +1,7 @@
 <div class="admin-nav">
   <a href="{{ url_for('admin.dashboard') }}" class="{{ 'active' if active == 'dashboard' else '' }}">Dashboard</a>
   <a href="{{ url_for('admin.households') }}" class="{{ 'active' if active == 'households' else '' }}">Households</a>
-  <a href="{{ url_for('admin.new_registrations') }}" class="{{ 'active' if active == 'new_registrations' else '' }}">
-    New Registrations
-    {% if cards_needed_count %}<span class="nav-badge">{{ cards_needed_count }}</span>{% endif %}
-  </a>
+  <a href="{{ url_for('admin.new_registrations') }}" class="{{ 'active' if active == 'new_registrations' else '' }}">New Registrations{% if cards_needed_count %}<span class="nav-badge">{{ cards_needed_count }}</span>{% endif %}</a>
   <a href="{{ url_for('admin.visits') }}" class="{{ 'active' if active == 'visits' else '' }}">Visits</a>
   <a href="{{ url_for('admin.reports') }}" class="{{ 'active' if active == 'reports' else '' }}">Reports</a>
   <a href="{{ url_for('admin.timeslots') }}" class="{{ 'active' if active == 'timeslots' else '' }}">Timeslots</a>

@@ -843,6 +843,8 @@ a.stat-tile:hover {
 }
 
 .admin-nav a {
+  display: inline-flex;
+  align-items: center;
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
   background: #eef1f5;
