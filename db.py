@@ -781,11 +781,15 @@ def search_households(query, sort=None, direction="asc"):
         conn.close()
 
 
-def search_households_by_code(query):
-    """Volunteer check-in search -- household code only, not name or phone.
-    Two people can share a name, and a phone can be shared/reused across a
-    family, but the household code is the one identifier that's supposed to
-    map to exactly one household, so check-in relies on it exclusively."""
+def search_households(query):
+    """Volunteer check-in search -- matches household code OR name. Used to
+    be code-only (a shared name was treated as too ambiguous to search on),
+    but when a household's code is wrong or forgotten, a name is the only
+    fallback a volunteer has. This is safe precisely because results
+    already render as a list for the volunteer to visually confirm against
+    (name, phone, household size) rather than auto-selecting one -- a
+    shared name is no riskier here than an ambiguous partial-code search
+    already was."""
     conn = get_db()
     try:
         like = f"%{query.strip()}%"
@@ -795,10 +799,13 @@ def search_households_by_code(query):
                    (SELECT COUNT(*) FROM members m WHERE m.household_id = h.id) AS member_count
             FROM households h
             WHERE h.household_code LIKE ?
+               OR h.primary_first_name LIKE ?
+               OR h.primary_last_name LIKE ?
+               OR (h.primary_first_name || ' ' || h.primary_last_name) LIKE ?
             ORDER BY CAST(h.household_code AS INTEGER)
             LIMIT 25
             """,
-            (like,),
+            (like, like, like, like),
         ).fetchall()
         return [dict(r) for r in rows]
     finally:

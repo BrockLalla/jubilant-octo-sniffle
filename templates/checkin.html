@@ -3,10 +3,10 @@
 {% block title %}Volunteer Check-In{% endblock %}
 {% block content %}
   <h1>Volunteer Check-In</h1>
-  <p class="subtitle">Search by household code.</p>
+  <p class="subtitle">Search by household code or name.</p>
 
   <form method="get" class="search-form">
-    <input type="text" name="q" value="{{ query }}" placeholder="e.g. 1234" autofocus inputmode="numeric">
+    <input type="text" name="q" value="{{ query }}" placeholder="e.g. 1234 or Smith" autofocus>
     <button type="submit" class="btn btn-primary" style="width:auto;">Search</button>
   </form>
 

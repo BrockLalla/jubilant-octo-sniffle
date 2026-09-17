@@ -284,7 +284,7 @@ def register():
 @bp.route("/checkin", methods=["GET"])
 def checkin():
     query = request.args.get("q", "").strip()
-    results = db.search_households_by_code(query) if query else []
+    results = db.search_households(query) if query else []
     return render_template("checkin.html", query=query, results=results)
 
 
