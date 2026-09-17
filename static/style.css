@@ -857,16 +857,20 @@ a.stat-tile:hover {
 }
 
 .nav-badge {
-  display: inline-block;
-  min-width: 1.3rem;
-  padding: 0.05rem 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: content-box;
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0.15rem;
   margin-left: 0.35rem;
-  border-radius: 999px;
+  border-radius: 50%;
   background: #b3261e;
   color: #fff;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  line-height: 1.3rem;
+  line-height: 1;
   text-align: center;
   animation: nav-badge-flash 1.6s ease-in-out infinite;
 }
