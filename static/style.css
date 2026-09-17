@@ -856,6 +856,26 @@ a.stat-tile:hover {
   color: #fff;
 }
 
+.nav-badge {
+  display: inline-block;
+  min-width: 1.3rem;
+  padding: 0.05rem 0.4rem;
+  margin-left: 0.35rem;
+  border-radius: 999px;
+  background: #b3261e;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.3rem;
+  text-align: center;
+  animation: nav-badge-flash 1.6s ease-in-out infinite;
+}
+
+@keyframes nav-badge-flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
 .muted {
   color: #666;
 }

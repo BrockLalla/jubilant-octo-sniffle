@@ -921,6 +921,16 @@ def list_recent_registrations(start_date=None, end_date=None):
         conn.close()
 
 
+def count_needing_cards():
+    """How many households still need a card -- powers the nav badge on
+    New Registrations (see routes/admin.py's context processor)."""
+    conn = get_db()
+    try:
+        return conn.execute("SELECT COUNT(*) FROM households WHERE card_made_at IS NULL").fetchone()[0]
+    finally:
+        conn.close()
+
+
 def set_card_made(household_id, made):
     conn = get_db()
     try:

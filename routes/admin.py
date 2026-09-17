@@ -17,6 +17,17 @@ import offsite_backup
 bp = Blueprint("admin", __name__)
 
 
+@bp.context_processor
+def inject_cards_needed_count():
+    # Powers the flashing badge on the "New Registrations" nav link (see
+    # admin/_nav.html) -- only queried once actually logged in, so the
+    # login/setup pages (also under this blueprint, reachable before
+    # authentication) don't pay for a count nobody sees.
+    if not session.get("admin_username"):
+        return {}
+    return {"cards_needed_count": db.count_needing_cards()}
+
+
 def external_url(path):
     """Builds a full URL for an email link, correctly for either deployment
     this app can run under.
