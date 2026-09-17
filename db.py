@@ -781,7 +781,7 @@ def search_households(query, sort=None, direction="asc"):
         conn.close()
 
 
-def search_households(query):
+def search_households_for_checkin(query):
     """Volunteer check-in search -- matches household code OR name. Used to
     be code-only (a shared name was treated as too ambiguous to search on),
     but when a household's code is wrong or forgotten, a name is the only
