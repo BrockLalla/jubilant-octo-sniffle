@@ -2,8 +2,6 @@
 {% block title %}Register a Household{% endblock %}
 {% block content %}
   <h1>Register a New Household</h1>
-  <p class="subtitle">This information is only visible to pantry administrators.</p>
-  <a class="btn btn-secondary" href="{{ url_for('public.checkin') }}" style="margin-bottom:1rem;">← Back to Check-In</a>
 
   <form method="post" id="register-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
