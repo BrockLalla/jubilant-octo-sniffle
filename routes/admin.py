@@ -551,15 +551,33 @@ def household_detail(household_id):
                 request.form.get("phone", "").strip(),
                 request.form.get("email", "").strip(),
                 int(raw_timeslot) if raw_timeslot else None,
-                designate_first_name=request.form.get("designate_first_name", "").strip(),
-                designate_last_name=request.form.get("designate_last_name", "").strip(),
-                designate_relationship=request.form.get("designate_relationship", "").strip(),
-                designate_id_verified=bool(request.form.get("designate_id_verified")),
                 id_verified=bool(request.form.get("id_verified")),
                 needs_diapers=bool(request.form.get("needs_diapers")),
                 needs_formula=bool(request.form.get("needs_formula")),
             )
             flash("Household updated.", "success")
+        elif action == "add_designate":
+            first_name = request.form.get("first_name", "").strip()
+            last_name = request.form.get("last_name", "").strip()
+            if first_name or last_name:
+                db.add_designate(
+                    household_id, first_name, last_name,
+                    request.form.get("relationship", "").strip(),
+                    id_verified=bool(request.form.get("id_verified")),
+                )
+                flash("Designate added.", "success")
+        elif action == "update_designate":
+            db.update_designate(
+                int(request.form.get("designate_id")),
+                request.form.get("first_name", "").strip(),
+                request.form.get("last_name", "").strip(),
+                request.form.get("relationship", "").strip(),
+                id_verified=bool(request.form.get("id_verified")),
+            )
+            flash("Designate updated.", "success")
+        elif action == "delete_designate":
+            db.delete_designate(int(request.form.get("designate_id")))
+            flash("Designate removed.", "success")
         elif action == "update_household_code":
             current_admin = db.get_admin_user(session.get("admin_username"))
             if not current_admin["is_super_admin"]:
@@ -656,6 +674,7 @@ def household_detail(household_id):
         "admin/household_detail.html",
         household=data["household"],
         members=data["members"],
+        designates=data["designates"],
         current_year=datetime.date.today().year,
         timeslots=db.list_timeslots(active_only=False),
         current_admin=db.get_admin_user(session.get("admin_username")),

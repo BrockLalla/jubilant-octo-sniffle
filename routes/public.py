@@ -290,6 +290,7 @@ def register():
             "register_success.html",
             household=household,
             members=data["members"],
+            designates=data["designates"],
             email_sent=email_sent,
         )
 
@@ -317,6 +318,7 @@ def checkin_confirm(household_id):
         "checkin_result.html",
         household=data["household"],
         members=data["members"],
+        designates=data["designates"],
         existing_visit=existing_visit,
         existing_visit_display=db.format_date_nice(existing_visit["visit_date"]) if existing_visit else None,
         blocked=bool(existing_visit),
@@ -333,12 +335,12 @@ def checkin_do(household_id):
         return redirect(url_for("public.checkin"))
 
     verified_ids = [int(v) for v in request.form.getlist("verified_member_ids[]") if v.isdigit()]
-    verify_designate = bool(request.form.get("verify_designate"))
-    if verified_ids or verify_designate:
+    verified_designate_ids = [int(v) for v in request.form.getlist("verified_designate_ids[]") if v.isdigit()]
+    if verified_ids or verified_designate_ids:
         if verified_ids:
             db.mark_members_id_verified(household_id, verified_ids)
-        if verify_designate:
-            db.mark_designate_id_verified(household_id)
+        if verified_designate_ids:
+            db.mark_designates_id_verified(household_id, verified_designate_ids)
         data = db.get_household(household_id)
 
     supply_needs_aged_out = db.clear_stale_supply_needs(household_id)
@@ -351,6 +353,7 @@ def checkin_do(household_id):
             "checkin_result.html",
             household=data["household"],
             members=data["members"],
+            designates=data["designates"],
             existing_visit=existing_visit,
             existing_visit_display=db.format_date_nice(existing_visit["visit_date"]),
             blocked=True,
@@ -363,6 +366,7 @@ def checkin_do(household_id):
         "checkin_result.html",
         household=data["household"],
         members=data["members"],
+        designates=data["designates"],
         existing_visit=None,
         blocked=False,
         success=True,

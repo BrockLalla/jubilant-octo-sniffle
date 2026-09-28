@@ -33,11 +33,12 @@
         </tr>
       {% endfor %}
     </table>
-    {% if household.designate_first_name or household.designate_last_name %}
+    {% if designates %}
       <p style="margin-top:1rem;">
-        <strong>Authorized Pickup Designate:</strong>
-        {{ household.designate_first_name }} {{ household.designate_last_name }}
-        {% if household.designate_relationship %}({{ household.designate_relationship }}){% endif %}
+        <strong>Authorized Pickup Designate{{ 's' if designates|length > 1 else '' }}:</strong>
+        {% for d in designates %}
+          {{ d.name }}{% if d.relationship %} ({{ d.relationship }}){% endif %}{% if not loop.last %}, {% endif %}
+        {% endfor %}
       </p>
     {% endif %}
     {% if household.needs_diapers or household.needs_formula %}

@@ -196,6 +196,17 @@ def init_db():
             created_at TEXT NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS designates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            household_id INTEGER NOT NULL REFERENCES households(id),
+            first_name TEXT NOT NULL,
+            last_name TEXT NOT NULL,
+            relationship TEXT,
+            id_verified INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_designates_household ON designates(household_id);
+
         CREATE TABLE IF NOT EXISTS audit_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             actor TEXT,
@@ -254,6 +265,28 @@ def init_db():
         conn.execute("UPDATE households SET card_made_at = ? WHERE card_made_at IS NULL", (now_iso(),))
         conn.execute(
             "INSERT INTO settings (key, value) VALUES ('card_made_backfill_done', '1') "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+        )
+
+    # One-time move of the old single-designate columns (still present on
+    # households, but no longer read or written anywhere -- a household can
+    # now have any number of authorized pickup designates) into the new
+    # designates table. Same settings-flag pattern as card_made_at just
+    # above, for the same reason: idempotent and safe regardless of which
+    # deploy actually introduced the designates table.
+    if not conn.execute("SELECT 1 FROM settings WHERE key = 'designates_backfill_done'").fetchone():
+        conn.execute(
+            """
+            INSERT INTO designates (household_id, first_name, last_name, relationship, id_verified, created_at)
+            SELECT id, designate_first_name, designate_last_name, designate_relationship,
+                   COALESCE(designate_id_verified, 0), created_at
+            FROM households
+            WHERE designate_first_name IS NOT NULL AND TRIM(designate_first_name) != ''
+               OR designate_last_name IS NOT NULL AND TRIM(designate_last_name) != ''
+            """
+        )
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES ('designates_backfill_done', '1') "
             "ON CONFLICT(key) DO UPDATE SET value = excluded.value"
         )
     conn.commit()
@@ -611,11 +644,13 @@ def create_household(primary_first_name, primary_last_name, phone, email,
     """member_rows: list of dicts with first_name, last_name, date_of_birth,
     relationship. The primary applicant should be included as one of the
     rows with relationship='Self'. pref_timeslot_ids: up to 3 timeslot ids in
-    rank order. designate_* fields describe someone other than a household
-    member who's allowed to pick up on the household's behalf (e.g. a
-    caregiver). only_one_timeslot: purely informational -- the household
-    indicated it can genuinely only make pref_timeslot_ids[0] (e.g. a fixed
-    work schedule) rather than it just being their top pick among several
+    rank order. designate_* fields optionally add one authorized pickup
+    designate (someone other than a household member, e.g. a caregiver) at
+    registration time -- stored in the designates table, same as any added
+    later via the admin panel; a household can have any number of these.
+    only_one_timeslot: purely informational -- the household indicated it
+    can genuinely only make pref_timeslot_ids[0] (e.g. a fixed work
+    schedule) rather than it just being their top pick among several
     workable options; doesn't change assignment, which always just takes
     the first preference given regardless (see assign_timeslot()). Returns
     the new household id.
@@ -630,16 +665,23 @@ def create_household(primary_first_name, primary_last_name, phone, email,
         cur = conn.execute(
             "INSERT INTO households (household_code, primary_first_name, primary_last_name, phone, email, "
             "pref1_timeslot_id, pref2_timeslot_id, pref3_timeslot_id, "
-            "assigned_timeslot_id, designate_first_name, designate_last_name, "
-            "designate_relationship, designate_id_verified, id_verified, needs_diapers, needs_formula, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "assigned_timeslot_id, id_verified, needs_diapers, needs_formula, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (household_code, primary_first_name, primary_last_name, phone, email,
-             pref1, pref2, pref3, assigned_timeslot_id, designate_first_name or None,
-             designate_last_name or None, designate_relationship or None,
-             1 if designate_id_verified else 0,
+             pref1, pref2, pref3, assigned_timeslot_id,
              1 if id_verified else 0, 1 if needs_diapers else 0, 1 if needs_formula else 0, ts),
         )
         household_id = cur.lastrowid
+
+        designate_first_name = (designate_first_name or "").strip()
+        designate_last_name = (designate_last_name or "").strip()
+        if designate_first_name or designate_last_name:
+            conn.execute(
+                "INSERT INTO designates (household_id, first_name, last_name, relationship, id_verified, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (household_id, designate_first_name, designate_last_name,
+                 (designate_relationship or "").strip() or None, 1 if designate_id_verified else 0, ts),
+            )
 
         for row in member_rows:
             m_cur = conn.execute(
@@ -680,7 +722,16 @@ def get_household(household_id):
             "WHERE household_id = ? ORDER BY id",
             (household_id,),
         ).fetchall()
-        return {"household": household, "members": [dict(m) for m in members]}
+        designates = conn.execute(
+            "SELECT *, (first_name || ' ' || last_name) AS name FROM designates "
+            "WHERE household_id = ? ORDER BY id",
+            (household_id,),
+        ).fetchall()
+        return {
+            "household": household,
+            "members": [dict(m) for m in members],
+            "designates": [dict(d) for d in designates],
+        }
     finally:
         conn.close()
 
@@ -860,21 +911,17 @@ def set_card_made(household_id, made):
 
 
 def update_household(household_id, primary_first_name, primary_last_name, phone, email,
-                      assigned_timeslot_id, designate_first_name=None,
-                      designate_last_name=None, designate_relationship=None,
-                      designate_id_verified=False,
+                      assigned_timeslot_id,
                       id_verified=False, needs_diapers=False, needs_formula=False):
+    """Designates aren't edited here -- see add_designate/update_designate/
+    delete_designate, and the household detail page's own list of them."""
     conn = get_db()
     try:
         conn.execute(
             "UPDATE households SET primary_first_name = ?, primary_last_name = ?, phone = ?, email = ?, "
-            "assigned_timeslot_id = ?, designate_first_name = ?, "
-            "designate_last_name = ?, designate_relationship = ?, designate_id_verified = ?, id_verified = ?, "
-            "needs_diapers = ?, needs_formula = ? WHERE id = ?",
+            "assigned_timeslot_id = ?, id_verified = ?, needs_diapers = ?, needs_formula = ? WHERE id = ?",
             (primary_first_name, primary_last_name, phone, email,
-             assigned_timeslot_id, designate_first_name or None, designate_last_name or None,
-             designate_relationship or None, 1 if designate_id_verified else 0,
-             1 if id_verified else 0, 1 if needs_diapers else 0,
+             assigned_timeslot_id, 1 if id_verified else 0, 1 if needs_diapers else 0,
              1 if needs_formula else 0, household_id),
         )
         conn.commit()
@@ -1013,14 +1060,17 @@ def anonymize_household(household_id):
     try:
         conn.execute(
             "UPDATE households SET primary_first_name = 'Removed', primary_last_name = '(anonymized)', "
-            "phone = NULL, email = NULL, designate_first_name = NULL, designate_last_name = NULL, "
-            "designate_relationship = NULL, anonymized_at = ? WHERE id = ?",
+            "phone = NULL, email = NULL, anonymized_at = ? WHERE id = ?",
             (now_iso(), household_id),
         )
         conn.execute(
             "UPDATE members SET first_name = 'Removed', last_name = '(anonymized)' WHERE household_id = ?",
             (household_id,),
         )
+        # Designates are pure PII with no reporting value (unlike a
+        # member's date_of_birth, kept above for age-bracket reporting) --
+        # deleted outright rather than anonymized in place.
+        conn.execute("DELETE FROM designates WHERE household_id = ?", (household_id,))
         conn.commit()
     finally:
         conn.close()
@@ -1044,6 +1094,61 @@ def add_member(household_id, first_name, last_name, date_of_birth, relationship,
         _recompute_supply_needs(conn, household_id)
         conn.commit()
         return member_id
+    finally:
+        conn.close()
+
+
+# ---------- Designates (authorized pickup people other than a household
+# member -- a household can have any number of these) ----------
+
+def add_designate(household_id, first_name, last_name, relationship, id_verified=False):
+    conn = get_db()
+    try:
+        conn.execute(
+            "INSERT INTO designates (household_id, first_name, last_name, relationship, id_verified, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (household_id, first_name, last_name, relationship or None, 1 if id_verified else 0, now_iso()),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def update_designate(designate_id, first_name, last_name, relationship, id_verified=False):
+    conn = get_db()
+    try:
+        conn.execute(
+            "UPDATE designates SET first_name = ?, last_name = ?, relationship = ?, id_verified = ? WHERE id = ?",
+            (first_name, last_name, relationship or None, 1 if id_verified else 0, designate_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def delete_designate(designate_id):
+    conn = get_db()
+    try:
+        conn.execute("DELETE FROM designates WHERE id = ?", (designate_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def mark_designates_id_verified(household_id, designate_ids):
+    """Marks the given designates as ID-verified -- used from the check-in
+    screen, mirroring mark_members_id_verified(). Scoped to household_id so
+    a submitted id can only ever affect that household's own designates."""
+    if not designate_ids:
+        return
+    conn = get_db()
+    try:
+        placeholders = ",".join("?" for _ in designate_ids)
+        conn.execute(
+            f"UPDATE designates SET id_verified = 1 WHERE household_id = ? AND id IN ({placeholders})",
+            [household_id] + list(designate_ids),
+        )
+        conn.commit()
     finally:
         conn.close()
 
@@ -1091,16 +1196,6 @@ def mark_members_id_verified(household_id, member_ids):
         conn.close()
 
 
-def mark_designate_id_verified(household_id):
-    """Same idea as mark_members_id_verified, but for the household's
-    authorized pickup designate (not a members-table row -- their info
-    lives directly on the household)."""
-    conn = get_db()
-    try:
-        conn.execute("UPDATE households SET designate_id_verified = 1 WHERE id = ?", (household_id,))
-        conn.commit()
-    finally:
-        conn.close()
 
 
 def record_visit(household_id, checked_in_by=None):
