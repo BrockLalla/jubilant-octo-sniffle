@@ -83,22 +83,12 @@
     </details>
 
     <details class="section-details">
-      <summary>Authorized Pickup Designate (optional)</summary>
-      <p class="hint">Someone other than a household member who's allowed to pick up food on this household's behalf — a caregiver, neighbor, adult child, etc. Volunteers will see this name at check-in.</p>
+      <summary>Authorized Pickup Designates (optional)</summary>
+      <p class="hint">People other than a household member who are allowed to pick up food on this household's behalf — a caregiver, neighbor, adult child, etc. Volunteers will see these names at check-in. Add as many as you need.</p>
 
-      <label for="designate_first_name">First Name</label>
-      <input type="text" id="designate_first_name" name="designate_first_name" value="{{ form.get('designate_first_name', '') }}">
+      <div id="designate-rows"></div>
 
-      <label for="designate_last_name">Last Name</label>
-      <input type="text" id="designate_last_name" name="designate_last_name" value="{{ form.get('designate_last_name', '') }}">
-
-      <label for="designate_relationship">Relationship to Household</label>
-      <input type="text" id="designate_relationship" name="designate_relationship" value="{{ form.get('designate_relationship', '') }}" placeholder="e.g. Caregiver, Neighbor, Adult Child">
-
-      <label class="checkbox-label">
-        <input type="checkbox" name="designate_id_verified" value="1" {% if form.get('designate_id_verified') %}checked{% endif %}>
-        Government ID Checked
-      </label>
+      <button type="button" class="btn btn-secondary" id="add-designate-btn">➕ Add Another Pickup Designate</button>
     </details>
 
     {% if show_duplicate_confirm %}
@@ -149,6 +139,23 @@
       <label class="checkbox-label">
         <input type="checkbox" class="member-id-verified-checkbox">
         <input type="hidden" name="member_id_verified[]" value="0">
+        Government ID Checked
+      </label>
+    </div>
+  </template>
+
+  <template id="designate-row-template">
+    <div class="designate-row">
+      <button type="button" class="btn btn-small btn-danger remove-row">Remove</button>
+      <label>First Name</label>
+      <input type="text" name="designate_first_name[]">
+      <label>Last Name</label>
+      <input type="text" name="designate_last_name[]">
+      <label>Relationship to Household</label>
+      <input type="text" name="designate_relationship[]" placeholder="e.g. Caregiver, Neighbor, Adult Child">
+      <label class="checkbox-label">
+        <input type="checkbox" class="designate-id-verified-checkbox">
+        <input type="hidden" name="designate_id_verified[]" value="0">
         Government ID Checked
       </label>
     </div>

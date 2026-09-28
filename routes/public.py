@@ -254,12 +254,23 @@ def register():
                 show_duplicate_confirm=True,
             ), 400
 
+        # Same "0"/"1" hidden-field trick as member_id_verified[] -- a bare
+        # checkbox omits itself entirely when unchecked, which would shift
+        # every later row's designate_*[] fields out of alignment.
+        designate_rows = [
+            {"first_name": first.strip(), "last_name": last.strip(), "relationship": rel.strip(), "id_verified": verified == "1"}
+            for first, last, rel, verified in zip(
+                request.form.getlist("designate_first_name[]"),
+                request.form.getlist("designate_last_name[]"),
+                request.form.getlist("designate_relationship[]"),
+                request.form.getlist("designate_id_verified[]"),
+            )
+            if first.strip() or last.strip()
+        ]
+
         household_id = db.create_household(
             primary_first_name, primary_last_name, phone, email, pref_ids, member_rows,
-            designate_first_name=request.form.get("designate_first_name", "").strip(),
-            designate_last_name=request.form.get("designate_last_name", "").strip(),
-            designate_relationship=request.form.get("designate_relationship", "").strip(),
-            designate_id_verified=bool(request.form.get("designate_id_verified")),
+            designate_rows=designate_rows,
             id_verified=id_verified, needs_diapers=needs_diapers, needs_formula=needs_formula,
             only_one_timeslot=only_one_timeslot,
         )

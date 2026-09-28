@@ -636,17 +636,16 @@ def possible_duplicate_people(confidence=None):
 
 
 def create_household(primary_first_name, primary_last_name, phone, email,
-                      pref_timeslot_ids, member_rows, designate_first_name=None,
-                      designate_last_name=None, designate_relationship=None,
-                      designate_id_verified=False,
+                      pref_timeslot_ids, member_rows, designate_rows=None,
                       id_verified=False, needs_diapers=False, needs_formula=False,
                       only_one_timeslot=False):
     """member_rows: list of dicts with first_name, last_name, date_of_birth,
     relationship. The primary applicant should be included as one of the
     rows with relationship='Self'. pref_timeslot_ids: up to 3 timeslot ids in
-    rank order. designate_* fields optionally add one authorized pickup
-    designate (someone other than a household member, e.g. a caregiver) at
-    registration time -- stored in the designates table, same as any added
+    rank order. designate_rows: optional list of dicts with first_name,
+    last_name, relationship, id_verified -- each becomes a separate
+    authorized pickup designate (someone other than a household member,
+    e.g. a caregiver), stored in the designates table the same as any added
     later via the admin panel; a household can have any number of these.
     only_one_timeslot: purely informational -- the household indicated it
     can genuinely only make pref_timeslot_ids[0] (e.g. a fixed work
@@ -673,14 +672,16 @@ def create_household(primary_first_name, primary_last_name, phone, email,
         )
         household_id = cur.lastrowid
 
-        designate_first_name = (designate_first_name or "").strip()
-        designate_last_name = (designate_last_name or "").strip()
-        if designate_first_name or designate_last_name:
+        for row in (designate_rows or []):
+            first = (row.get("first_name") or "").strip()
+            last = (row.get("last_name") or "").strip()
+            if not first and not last:
+                continue
             conn.execute(
                 "INSERT INTO designates (household_id, first_name, last_name, relationship, id_verified, created_at) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
-                (household_id, designate_first_name, designate_last_name,
-                 (designate_relationship or "").strip() or None, 1 if designate_id_verified else 0, ts),
+                (household_id, first, last, (row.get("relationship") or "").strip() or None,
+                 1 if row.get("id_verified") else 0, ts),
             )
 
         for row in member_rows:

@@ -52,6 +52,29 @@ document.addEventListener("DOMContentLoaded", function () {
   // Start with one empty member row so the form doesn't look empty.
   addRow();
 
+  // Authorized pickup designates -- same repeatable-row pattern as members
+  // above, but starting with zero rows (unlike members) since this whole
+  // section is optional and collapsed by default.
+  var designateContainer = document.getElementById("designate-rows");
+  var designateTemplate = document.getElementById("designate-row-template");
+  var addDesignateBtn = document.getElementById("add-designate-btn");
+
+  function addDesignateRow() {
+    var clone = designateTemplate.content.cloneNode(true);
+    var row = clone.querySelector(".designate-row");
+    row.querySelector(".remove-row").addEventListener("click", function () {
+      row.remove();
+    });
+    var checkbox = row.querySelector(".designate-id-verified-checkbox");
+    var hidden = checkbox.nextElementSibling;
+    checkbox.addEventListener("change", function () {
+      hidden.value = checkbox.checked ? "1" : "0";
+    });
+    designateContainer.appendChild(clone);
+  }
+
+  addDesignateBtn.addEventListener("click", addDesignateRow);
+
   // Someone who can only make their 1st choice time doesn't need a 2nd/3rd
   // -- hide those selects and clear them so a stale leftover value from
   // before checking the box never gets submitted alongside it.
