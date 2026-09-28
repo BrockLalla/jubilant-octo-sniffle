@@ -62,9 +62,6 @@ document.addEventListener("DOMContentLoaded", function () {
   function addDesignateRow() {
     var clone = designateTemplate.content.cloneNode(true);
     var row = clone.querySelector(".designate-row");
-    row.querySelector(".remove-row").addEventListener("click", function () {
-      row.remove();
-    });
     var checkbox = row.querySelector(".designate-id-verified-checkbox");
     var hidden = checkbox.nextElementSibling;
     checkbox.addEventListener("change", function () {
