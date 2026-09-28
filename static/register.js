@@ -53,8 +53,8 @@ document.addEventListener("DOMContentLoaded", function () {
   addRow();
 
   // Authorized pickup designates -- same repeatable-row pattern as members
-  // above, but starting with zero rows (unlike members) since this whole
-  // section is optional and collapsed by default.
+  // above, including starting with one empty row already visible so the
+  // section isn't just a button when expanded.
   var designateContainer = document.getElementById("designate-rows");
   var designateTemplate = document.getElementById("designate-row-template");
   var addDesignateBtn = document.getElementById("add-designate-btn");
@@ -74,6 +74,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   addDesignateBtn.addEventListener("click", addDesignateRow);
+  addDesignateRow();
 
   // Someone who can only make their 1st choice time doesn't need a 2nd/3rd
   // -- hide those selects and clear them so a stale leftover value from
