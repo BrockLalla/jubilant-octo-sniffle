@@ -13,6 +13,24 @@
   </p>
   <button type="submit" form="household-info-form" class="btn btn-primary">Save Household Info</button>
 
+  {% if current_admin.is_super_admin %}
+    <div class="card">
+      <h2>Household Code</h2>
+      <p class="hint">
+        For fixing a real-world number conflict (e.g. two people sharing one card number in an outside
+        sign-up sheet). This is the number households and volunteers use to look this household up, so
+        double-check before saving.
+      </p>
+      <form method="post" onsubmit="return confirm('Change this household\'s code from {{ household.household_code }} to ' + document.getElementById('household_code').value + '? Volunteers using the old number won\'t find them until they know the new one.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="update_household_code">
+        <label for="household_code">Household Code</label>
+        <input type="text" id="household_code" name="household_code" value="{{ household.household_code }}" required>
+        <button type="submit" class="btn btn-secondary" style="margin-top:1rem;">Change Code</button>
+      </form>
+    </div>
+  {% endif %}
+
   <div class="card">
     <h2>Household Info</h2>
     <form method="post" id="household-info-form">

@@ -882,6 +882,32 @@ def update_household(household_id, primary_first_name, primary_last_name, phone,
         conn.close()
 
 
+def update_household_code(household_id, new_code):
+    """Renumbers a household -- for the occasional real-world correction
+    (two households sharing a number in an external source like a sign-up
+    sheet, a printed card that's wrong, etc.) that previously needed a full
+    backup-download/edit/restore round trip to fix, which is both risky
+    (it replaces the entire live database, losing anything entered since
+    that backup) and heavyweight for what's really a one-field change.
+    Returns None on success, or an error message string if the code isn't
+    a plain positive number or is already used by a different household."""
+    new_code = (new_code or "").strip()
+    if not new_code.isdigit() or int(new_code) <= 0:
+        return "Household code must be a positive number."
+    conn = get_db()
+    try:
+        existing = conn.execute(
+            "SELECT id FROM households WHERE household_code = ? AND id != ?", (new_code, household_id)
+        ).fetchone()
+        if existing:
+            return f"Household code {new_code} is already used by another household."
+        conn.execute("UPDATE households SET household_code = ? WHERE id = ?", (new_code, household_id))
+        conn.commit()
+        return None
+    finally:
+        conn.close()
+
+
 def _household_has_member_under_2(conn, household_id):
     rows = conn.execute(
         "SELECT date_of_birth FROM members WHERE household_id = ? AND date_of_birth IS NOT NULL",

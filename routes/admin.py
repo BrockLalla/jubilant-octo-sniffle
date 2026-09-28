@@ -560,6 +560,23 @@ def household_detail(household_id):
                 needs_formula=bool(request.form.get("needs_formula")),
             )
             flash("Household updated.", "success")
+        elif action == "update_household_code":
+            current_admin = db.get_admin_user(session.get("admin_username"))
+            if not current_admin["is_super_admin"]:
+                flash("Only a super admin can change a household's code.", "error")
+            else:
+                old_code = data["household"]["household_code"]
+                new_code = request.form.get("household_code", "").strip()
+                error = db.update_household_code(household_id, new_code)
+                if error:
+                    flash(error, "error")
+                else:
+                    db.log_audit_event(
+                        current_admin["username"], "household_code_changed",
+                        detail=f"household {household_id}: {old_code} -> {new_code}",
+                        ip_address=request.remote_addr,
+                    )
+                    flash(f"Household code changed from {old_code} to {new_code}.", "success")
         elif action == "update_member":
             try:
                 dob = db.combine_date_parts(
@@ -641,6 +658,7 @@ def household_detail(household_id):
         members=data["members"],
         current_year=datetime.date.today().year,
         timeslots=db.list_timeslots(active_only=False),
+        current_admin=db.get_admin_user(session.get("admin_username")),
     )
 
 
