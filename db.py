@@ -757,35 +757,49 @@ def _household_order_by(sort, direction):
 def search_households(query, sort=None, direction="asc"):
     """Search by primary name, member name, phone, or household code.
 
-    A numeric query is anchored rather than matched "contains anywhere":
-    the code as a prefix (how a code is actually typed) and the phone as a
-    suffix (how people search "last 4 digits"). An anywhere-in-the-string
-    match on a short code against a 10-digit phone number produces frequent,
-    coincidental matches on unrelated households -- e.g. typing household
-    code "2135" could surface a household whose phone number happens to
-    contain "2135" in the middle somewhere. Name fields keep "contains
-    anywhere" since that's the expected behavior for partial name search.
+    Phone is only consulted as a fallback when a code/name search turns up
+    nothing -- not merged into every search. Matching a numeric query
+    against the end of every phone number (so staff can look someone up by
+    the last 4 digits) sounds like a rare coincidence, but it isn't: with
+    enough households on file, *some* unrelated phone number regularly
+    happens to end in the same 4 digits as whatever code was typed, so an
+    exact code match kept getting an unrelated household tagging along.
+    A numeric query is also anchored rather than matched "contains
+    anywhere": the code as a prefix (how a code is actually typed), the
+    phone as a suffix (how people search "last 4 digits"). Name fields keep
+    "contains anywhere" since that's the expected behavior for partial
+    name search.
     """
     conn = get_db()
     try:
         q = query.strip()
         name_like = f"%{q}%"
         code_like = f"{q}%" if q.isdigit() else name_like
-        phone_like = f"%{q}" if q.isdigit() else name_like
         rows = conn.execute(
             """
             SELECT DISTINCT h.*, (h.primary_first_name || ' ' || h.primary_last_name) AS primary_name
             FROM households h
             LEFT JOIN members m ON m.household_id = h.id
             WHERE (h.primary_first_name || ' ' || h.primary_last_name) LIKE ?
-               OR h.phone LIKE ?
                OR h.household_code LIKE ?
                OR (m.first_name || ' ' || m.last_name) LIKE ?
             ORDER BY h.primary_last_name, h.primary_first_name
             LIMIT 25
             """,
-            (name_like, phone_like, code_like, name_like),
+            (name_like, code_like, name_like),
         ).fetchall()
+        if not rows:
+            phone_like = f"%{q}" if q.isdigit() else name_like
+            rows = conn.execute(
+                """
+                SELECT DISTINCT h.*, (h.primary_first_name || ' ' || h.primary_last_name) AS primary_name
+                FROM households h
+                WHERE h.phone LIKE ?
+                ORDER BY h.primary_last_name, h.primary_first_name
+                LIMIT 25
+                """,
+                (phone_like,),
+            ).fetchall()
         results = []
         for row in rows:
             members = conn.execute(
