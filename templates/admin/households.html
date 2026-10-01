@@ -11,6 +11,12 @@
       Showing {{ rows|length }} household{{ '' if rows|length == 1 else 's' }} needing an ID follow-up.
       <a href="{{ url_for('admin.households') }}">Clear filter</a>
     </div>
+  {% elif incomplete_households_count %}
+    <div class="alert alert-warning">
+      ⚠️ {{ incomplete_households_count }} household{{ '' if incomplete_households_count == 1 else 's' }}
+      still {{ 'needs' if incomplete_households_count == 1 else 'need' }} an ID follow-up.
+      <a href="{{ url_for('admin.households', incomplete='1') }}">View them</a>
+    </div>
   {% endif %}
 
   <form method="get" class="search-form">
