@@ -9,6 +9,7 @@ import sqlite3
 import datetime
 import calendar
 import math
+import re
 import secrets
 import shutil
 
@@ -759,16 +760,20 @@ def search_households(query, sort=None, direction="asc"):
 
     Phone is only consulted as a fallback when a code/name search turns up
     nothing -- not merged into every search. Matching a numeric query
-    against the end of every phone number (so staff can look someone up by
-    the last 4 digits) sounds like a rare coincidence, but it isn't: with
-    enough households on file, *some* unrelated phone number regularly
-    happens to end in the same 4 digits as whatever code was typed, so an
-    exact code match kept getting an unrelated household tagging along.
-    A numeric query is also anchored rather than matched "contains
-    anywhere": the code as a prefix (how a code is actually typed), the
-    phone as a suffix (how people search "last 4 digits"). Name fields keep
-    "contains anywhere" since that's the expected behavior for partial
-    name search.
+    against every phone number (so staff can look someone up by phone)
+    sounds like a rare coincidence, but it isn't: with enough households on
+    file, *some* unrelated phone number regularly happens to contain the
+    same digits as whatever code was typed, so an exact code match kept
+    getting an unrelated household tagging along. A numeric code query is
+    anchored as a prefix (how a code is actually typed) rather than
+    "contains anywhere". Name fields keep "contains anywhere" since that's
+    the expected behavior for partial name search.
+
+    The phone fallback compares digits only, on both sides, via a
+    stripped-down form of the stored column -- phone numbers get typed and
+    saved with all sorts of spacing/dashes/parens, and a literal substring
+    match would otherwise miss a real match just because the search box and
+    the saved record happened to be formatted differently.
     """
     conn = get_db()
     try:
@@ -788,17 +793,19 @@ def search_households(query, sort=None, direction="asc"):
             """,
             (name_like, code_like, name_like),
         ).fetchall()
-        if not rows:
-            phone_like = f"%{q}" if q.isdigit() else name_like
+        q_digits = re.sub(r"\D", "", q)
+        if not rows and q_digits:
             rows = conn.execute(
                 """
                 SELECT DISTINCT h.*, (h.primary_first_name || ' ' || h.primary_last_name) AS primary_name
                 FROM households h
-                WHERE h.phone LIKE ?
+                WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                        h.phone, '-', ''), ' ', ''), '(', ''), ')', ''), '.', ''
+                      ) LIKE ?
                 ORDER BY h.primary_last_name, h.primary_first_name
                 LIMIT 25
                 """,
-                (phone_like,),
+                (f"%{q_digits}%",),
             ).fetchall()
         results = []
         for row in rows:
