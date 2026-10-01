@@ -64,6 +64,10 @@
         Government ID Checked
       </label>
       <label class="checkbox-label">
+        <input type="checkbox" name="card_made" value="1" {% if household.card_made_at %}checked{% endif %}>
+        🪪 Card Made
+      </label>
+      <label class="checkbox-label">
         <input type="checkbox" name="needs_diapers" value="1" {% if household.needs_diapers %}checked{% endif %}>
         🧷 Diapers Needed
       </label>

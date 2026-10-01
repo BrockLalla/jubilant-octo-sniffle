@@ -11,12 +11,26 @@
       Showing {{ rows|length }} household{{ '' if rows|length == 1 else 's' }} needing an ID follow-up.
       <a href="{{ url_for('admin.households') }}">Clear filter</a>
     </div>
-  {% elif incomplete_households_count %}
+  {% elif no_card_only %}
     <div class="alert alert-warning">
-      ⚠️ {{ incomplete_households_count }} household{{ '' if incomplete_households_count == 1 else 's' }}
-      still {{ 'needs' if incomplete_households_count == 1 else 'need' }} an ID follow-up.
-      <a href="{{ url_for('admin.households', incomplete='1') }}">View them</a>
+      Showing {{ rows|length }} household{{ '' if rows|length == 1 else 's' }} without a card.
+      <a href="{{ url_for('admin.households') }}">Clear filter</a>
     </div>
+  {% else %}
+    {% if incomplete_households_count %}
+      <div class="alert alert-warning">
+        ⚠️ {{ incomplete_households_count }} household{{ '' if incomplete_households_count == 1 else 's' }}
+        still {{ 'needs' if incomplete_households_count == 1 else 'need' }} an ID follow-up.
+        <a href="{{ url_for('admin.households', incomplete='1') }}">View them</a>
+      </div>
+    {% endif %}
+    {% if households_without_card_count %}
+      <div class="alert alert-warning">
+        🪪 {{ households_without_card_count }} household{{ '' if households_without_card_count == 1 else 's' }}
+        {{ "don't" if households_without_card_count != 1 else "doesn't" }} have a card yet.
+        <a href="{{ url_for('admin.households', no_card='1') }}">View them</a>
+      </div>
+    {% endif %}
   {% endif %}
 
   <form method="get" class="search-form">
@@ -26,13 +40,14 @@
 
   <div class="table-scroll">
     <table>
-      {% set params = {'q': query, 'incomplete': '1' if incomplete_only else None} %}
+      {% set params = {'q': query, 'incomplete': '1' if incomplete_only else None, 'no_card': '1' if no_card_only else None} %}
       <tr>
         {{ macros.sort_th('Household Code', 'code', sort, direction, 'admin.households', params) }}
         {{ macros.sort_th('Primary Name', 'name', sort, direction, 'admin.households', params) }}
         {{ macros.sort_th('Phone', 'phone', sort, direction, 'admin.households', params) }}
         {{ macros.sort_th('Size', 'size', sort, direction, 'admin.households', params) }}
         {{ macros.sort_th('Status', 'status', sort, direction, 'admin.households', params) }}
+        <th>Card</th>
         <th></th>
       </tr>
       {% for h in rows %}
@@ -42,6 +57,18 @@
           <td>{{ h.phone or '' }}</td>
           <td>{{ h.member_count }}</td>
           <td>{{ macros.status_badge(h.member_count) }}</td>
+          <td>
+            <form method="post" action="{{ url_for('admin.toggle_card_made_households', household_id=h.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="q" value="{{ query }}">
+              <input type="hidden" name="sort" value="{{ sort }}">
+              <input type="hidden" name="dir" value="{{ direction }}">
+              <input type="hidden" name="incomplete" value="{{ '1' if incomplete_only else '' }}">
+              <input type="hidden" name="no_card" value="{{ '1' if no_card_only else '' }}">
+              <input type="checkbox" name="made" value="1" class="checkbox-lg" onchange="this.form.submit();"
+                     {% if h.card_made_at %}checked{% endif %} title="Card made">
+            </form>
+          </td>
           <td><a class="btn btn-small btn-secondary" href="{{ url_for('admin.household_detail', household_id=h.id) }}">View / Edit</a></td>
         </tr>
       {% endfor %}

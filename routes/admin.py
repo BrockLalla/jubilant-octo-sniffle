@@ -488,13 +488,16 @@ def dashboard():
 def households():
     query = request.args.get("q", "").strip()
     incomplete_only = request.args.get("incomplete") == "1"
+    no_card_only = request.args.get("no_card") == "1"
     sort = request.args.get("sort", "").strip()
     if sort:
         direction = "desc" if request.args.get("dir") == "desc" else "asc"
     else:
         # Default view: most recently registered households first.
         sort, direction = "code", "desc"
-    if incomplete_only:
+    if no_card_only:
+        rows = db.list_households_without_card(sort=sort, direction=direction)
+    elif incomplete_only:
         rows = db.list_incomplete_households(sort=sort, direction=direction)
     elif query:
         rows = db.search_households(query, sort=sort, direction=direction)
@@ -502,9 +505,30 @@ def households():
         rows = db.list_all_households(sort=sort, direction=direction)
     return render_template(
         "admin/households.html", rows=rows, query=query, sort=sort, direction=direction,
-        incomplete_only=incomplete_only,
+        incomplete_only=incomplete_only, no_card_only=no_card_only,
         incomplete_households_count=db.count_incomplete_households(),
+        # Same "card_made_at IS NULL" count that powers the New Registrations
+        # nav badge -- reused here since it's exactly the number this page's
+        # own "without a card" banner needs too.
+        households_without_card_count=db.count_needing_cards(),
     )
+
+
+@bp.route("/households/<int:household_id>/card-made", methods=["POST"])
+@login_required
+def toggle_card_made_households(household_id):
+    # Separate from new-registrations' toggle_card_made() below so each can
+    # redirect back to its own page's state (filters/sort here, date-range
+    # there) without the two trampling each other's query params.
+    db.set_card_made(household_id, made=bool(request.form.get("made")))
+    return redirect(url_for(
+        "admin.households",
+        q=request.form.get("q") or None,
+        sort=request.form.get("sort") or None,
+        dir=request.form.get("dir") or None,
+        incomplete=request.form.get("incomplete") or None,
+        no_card=request.form.get("no_card") or None,
+    ))
 
 
 @bp.route("/new-registrations")
@@ -559,6 +583,7 @@ def household_detail(household_id):
                 needs_diapers=bool(request.form.get("needs_diapers")),
                 needs_formula=bool(request.form.get("needs_formula")),
             )
+            db.set_card_made(household_id, made=bool(request.form.get("card_made")))
             flash("Household updated.", "success")
         elif action == "add_designate":
             first_name = request.form.get("first_name", "").strip()

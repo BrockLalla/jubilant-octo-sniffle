@@ -942,9 +942,10 @@ def list_all_households(sort=None, direction="asc"):
 
 
 def list_incomplete_households(sort=None, direction="asc"):
-    """Households the nav badge is counting -- lets the "Households" badge
-    actually lead somewhere, instead of just reporting a number staff would
-    otherwise have to hunt for across the full list."""
+    """Households the "needs an ID follow-up" banner on the Households page
+    is counting -- lets that banner actually lead somewhere, instead of
+    just reporting a number staff would otherwise have to hunt for across
+    the full list."""
     conn = get_db()
     try:
         order_by = _household_order_by(sort, direction)
@@ -952,6 +953,24 @@ def list_incomplete_households(sort=None, direction="asc"):
             f"SELECT h.*, (h.primary_first_name || ' ' || h.primary_last_name) AS primary_name, "
             f"(SELECT COUNT(*) FROM members m WHERE m.household_id = h.id) AS member_count "
             f"FROM households h WHERE {_INCOMPLETE_WHERE} ORDER BY {order_by}"
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def list_households_without_card(sort=None, direction="asc"):
+    """Same "card_made_at IS NULL" definition as count_needing_cards(), as
+    a full row list rather than a count -- lets the Households page's
+    "without a card" filter drill down to exactly who, the same way
+    list_incomplete_households() does for the ID-check filter."""
+    conn = get_db()
+    try:
+        order_by = _household_order_by(sort, direction)
+        rows = conn.execute(
+            f"SELECT h.*, (h.primary_first_name || ' ' || h.primary_last_name) AS primary_name, "
+            f"(SELECT COUNT(*) FROM members m WHERE m.household_id = h.id) AS member_count "
+            f"FROM households h WHERE h.card_made_at IS NULL ORDER BY {order_by}"
         ).fetchall()
         return [dict(r) for r in rows]
     finally:
