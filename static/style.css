@@ -878,6 +878,14 @@ a.stat-tile:hover {
   50% { opacity: 0.45; }
 }
 
+/* Same circle as .nav-badge, but without the flash -- used for counts that
+   sit non-zero most of the time (e.g. an ID-check backlog) rather than
+   something urgent that clears out, so it doesn't compete for attention
+   forever. */
+.nav-badge-static {
+  animation: none;
+}
+
 .muted {
   color: #666;
 }

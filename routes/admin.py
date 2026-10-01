@@ -18,14 +18,17 @@ bp = Blueprint("admin", __name__)
 
 
 @bp.context_processor
-def inject_cards_needed_count():
-    # Powers the flashing badge on the "New Registrations" nav link (see
+def inject_nav_badge_counts():
+    # Powers the nav badges on "New Registrations" and "Households" (see
     # admin/_nav.html) -- only queried once actually logged in, so the
     # login/setup pages (also under this blueprint, reachable before
-    # authentication) don't pay for a count nobody sees.
+    # authentication) don't pay for counts nobody sees.
     if not session.get("admin_username"):
         return {}
-    return {"cards_needed_count": db.count_needing_cards()}
+    return {
+        "cards_needed_count": db.count_needing_cards(),
+        "incomplete_households_count": db.count_incomplete_households(),
+    }
 
 
 def external_url(path):

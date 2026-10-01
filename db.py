@@ -763,6 +763,39 @@ def household_incomplete_people(household, members, designates):
     return incomplete
 
 
+def count_incomplete_households():
+    """How many households would show the "Incomplete" ID-check banner on
+    their own page -- powers a nav badge so staff can see there's a
+    follow-up backlog without opening the Households list. Mirrors
+    household_incomplete_people()'s logic in SQL (a per-household Python
+    loop over the whole table would also work at this app's scale, but a
+    single query is both simpler to keep in sync and runs on every admin
+    page load via the nav)."""
+    conn = get_db()
+    try:
+        return conn.execute(
+            """
+            SELECT COUNT(*) FROM households h
+            WHERE (
+                NOT (h.id_verified = 1 OR EXISTS (
+                    SELECT 1 FROM members m
+                    WHERE m.household_id = h.id AND m.relationship = 'Self' AND m.id_verified = 1
+                ))
+            )
+            OR EXISTS (
+                SELECT 1 FROM members m
+                WHERE m.household_id = h.id AND m.relationship != 'Self' AND m.id_verified = 0
+            )
+            OR EXISTS (
+                SELECT 1 FROM designates d
+                WHERE d.household_id = h.id AND d.id_verified = 0
+            )
+            """
+        ).fetchone()[0]
+    finally:
+        conn.close()
+
+
 # Sort keys the Households admin list can use -- "status" reuses "size"
 # since a household's status badge is derived purely from its member count.
 _HOUSEHOLD_SORT_COLUMNS = {

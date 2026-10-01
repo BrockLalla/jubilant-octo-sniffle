@@ -4,7 +4,7 @@
 {% block content %}
   {% set active = 'households' %}
   {% include "admin/_nav.html" %}
-  <h1>Households</h1>
+  <h1 id="top">Households</h1>
 
   <form method="get" class="search-form">
     <input type="text" name="q" value="{{ query }}" placeholder="Search by name, phone, or household code">
@@ -36,5 +36,7 @@
   </div>
   {% if not rows %}
     <p class="muted">No households found.</p>
+  {% elif rows|length > 10 %}
+    <p style="text-align:center;"><a href="#top" class="btn btn-small btn-secondary">&uarr; Back to Top</a></p>
   {% endif %}
 {% endblock %}
