@@ -763,6 +763,27 @@ def household_incomplete_people(household, members, designates):
     return incomplete
 
 
+# Same "incomplete" definition as household_incomplete_people() --
+# shared by count_incomplete_households() and list_incomplete_households()
+# so the nav badge's count and its drill-down list can't drift apart.
+_INCOMPLETE_WHERE = """
+    (
+        NOT (h.id_verified = 1 OR EXISTS (
+            SELECT 1 FROM members m
+            WHERE m.household_id = h.id AND m.relationship = 'Self' AND m.id_verified = 1
+        ))
+    )
+    OR EXISTS (
+        SELECT 1 FROM members m
+        WHERE m.household_id = h.id AND m.relationship != 'Self' AND m.id_verified = 0
+    )
+    OR EXISTS (
+        SELECT 1 FROM designates d
+        WHERE d.household_id = h.id AND d.id_verified = 0
+    )
+"""
+
+
 def count_incomplete_households():
     """How many households would show the "Incomplete" ID-check banner on
     their own page -- powers a nav badge so staff can see there's a
@@ -774,23 +795,7 @@ def count_incomplete_households():
     conn = get_db()
     try:
         return conn.execute(
-            """
-            SELECT COUNT(*) FROM households h
-            WHERE (
-                NOT (h.id_verified = 1 OR EXISTS (
-                    SELECT 1 FROM members m
-                    WHERE m.household_id = h.id AND m.relationship = 'Self' AND m.id_verified = 1
-                ))
-            )
-            OR EXISTS (
-                SELECT 1 FROM members m
-                WHERE m.household_id = h.id AND m.relationship != 'Self' AND m.id_verified = 0
-            )
-            OR EXISTS (
-                SELECT 1 FROM designates d
-                WHERE d.household_id = h.id AND d.id_verified = 0
-            )
-            """
+            f"SELECT COUNT(*) FROM households h WHERE {_INCOMPLETE_WHERE}"
         ).fetchone()[0]
     finally:
         conn.close()
@@ -930,6 +935,23 @@ def list_all_households(sort=None, direction="asc"):
             f"SELECT h.*, (h.primary_first_name || ' ' || h.primary_last_name) AS primary_name, "
             f"(SELECT COUNT(*) FROM members m WHERE m.household_id = h.id) AS member_count "
             f"FROM households h ORDER BY {order_by}"
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def list_incomplete_households(sort=None, direction="asc"):
+    """Households the nav badge is counting -- lets the "Households" badge
+    actually lead somewhere, instead of just reporting a number staff would
+    otherwise have to hunt for across the full list."""
+    conn = get_db()
+    try:
+        order_by = _household_order_by(sort, direction)
+        rows = conn.execute(
+            f"SELECT h.*, (h.primary_first_name || ' ' || h.primary_last_name) AS primary_name, "
+            f"(SELECT COUNT(*) FROM members m WHERE m.household_id = h.id) AS member_count "
+            f"FROM households h WHERE {_INCOMPLETE_WHERE} ORDER BY {order_by}"
         ).fetchall()
         return [dict(r) for r in rows]
     finally:

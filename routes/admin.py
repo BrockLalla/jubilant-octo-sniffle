@@ -490,19 +490,22 @@ def dashboard():
 @login_required
 def households():
     query = request.args.get("q", "").strip()
+    incomplete_only = request.args.get("incomplete") == "1"
     sort = request.args.get("sort", "").strip()
     if sort:
         direction = "desc" if request.args.get("dir") == "desc" else "asc"
     else:
         # Default view: most recently registered households first.
         sort, direction = "code", "desc"
-    rows = (
-        db.search_households(query, sort=sort, direction=direction)
-        if query
-        else db.list_all_households(sort=sort, direction=direction)
-    )
+    if incomplete_only:
+        rows = db.list_incomplete_households(sort=sort, direction=direction)
+    elif query:
+        rows = db.search_households(query, sort=sort, direction=direction)
+    else:
+        rows = db.list_all_households(sort=sort, direction=direction)
     return render_template(
-        "admin/households.html", rows=rows, query=query, sort=sort, direction=direction
+        "admin/households.html", rows=rows, query=query, sort=sort, direction=direction,
+        incomplete_only=incomplete_only,
     )
 
 

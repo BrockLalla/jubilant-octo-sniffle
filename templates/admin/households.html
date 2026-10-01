@@ -6,6 +6,13 @@
   {% include "admin/_nav.html" %}
   <h1 id="top">Households</h1>
 
+  {% if incomplete_only %}
+    <div class="alert alert-warning">
+      Showing {{ rows|length }} household{{ '' if rows|length == 1 else 's' }} needing an ID follow-up.
+      <a href="{{ url_for('admin.households') }}">Clear filter</a>
+    </div>
+  {% endif %}
+
   <form method="get" class="search-form">
     <input type="text" name="q" value="{{ query }}" placeholder="Search by name, phone, or household code">
     <button type="submit" class="btn btn-primary" style="width:auto;">Search</button>
@@ -13,7 +20,7 @@
 
   <div class="table-scroll">
     <table>
-      {% set params = {'q': query} %}
+      {% set params = {'q': query, 'incomplete': '1' if incomplete_only else None} %}
       <tr>
         {{ macros.sort_th('Household Code', 'code', sort, direction, 'admin.households', params) }}
         {{ macros.sort_th('Primary Name', 'name', sort, direction, 'admin.households', params) }}
@@ -37,6 +44,6 @@
   {% if not rows %}
     <p class="muted">No households found.</p>
   {% elif rows|length > 10 %}
-    <p style="text-align:center;"><a href="#top" class="btn btn-small btn-secondary">&uarr; Back to Top</a></p>
+    <a href="#top" class="back-to-top btn btn-small btn-secondary">&uarr; Top</a>
   {% endif %}
 {% endblock %}

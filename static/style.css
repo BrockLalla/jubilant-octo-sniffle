@@ -873,6 +873,19 @@ a.stat-tile:hover {
   animation: nav-badge-flash 1.6s ease-in-out infinite;
 }
 
+/* The incomplete-households badge is its own clickable <a> (a <span> can't
+   be a link), which collides with .admin-nav a's grey pill styling at
+   equal-ish specificity -- this re-asserts the circle so it doesn't render
+   as just another nav pill. */
+.admin-nav a.nav-badge {
+  padding: 0.15rem;
+  margin-left: 0.35rem;
+  border-radius: 50%;
+  background: #b3261e;
+  color: #fff;
+  font-weight: 700;
+}
+
 @keyframes nav-badge-flash {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.45; }
@@ -908,4 +921,16 @@ a.stat-tile:hover {
   .btn-row .btn {
     width: 100%;
   }
+}
+
+/* Stays on screen while scrolling a long, uncapped list (e.g. the full
+   Households table) -- a link only at the bottom of the table is useless
+   until you've already scrolled past everything. */
+.back-to-top {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  width: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  z-index: 100;
 }
