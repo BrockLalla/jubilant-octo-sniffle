@@ -582,6 +582,7 @@ def household_detail(household_id):
                 id_verified=bool(request.form.get("id_verified")),
                 needs_diapers=bool(request.form.get("needs_diapers")),
                 needs_formula=bool(request.form.get("needs_formula")),
+                address=request.form.get("address", "").strip(),
             )
             db.set_card_made(household_id, made=bool(request.form.get("card_made")))
             flash("Household updated.", "success")
@@ -914,14 +915,14 @@ def export_households():
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(
-        ["Household Code", "First Name", "Last Name", "Phone", "Household Size", "Status",
+        ["Household Code", "First Name", "Last Name", "Phone", "Address", "Household Size", "Status",
          "ID Verified", "Needs Diapers", "Needs Formula", "Registered"]
     )
     for r in rows:
         status = db.household_status(r["member_count"])
         writer.writerow(
             [r["household_code"], r["primary_first_name"], r["primary_last_name"], r["phone"] or "",
-             r["member_count"], f"{status['code']} - {status['label']}",
+             r["address"] or "", r["member_count"], f"{status['code']} - {status['label']}",
              "Yes" if r["id_verified"] else "No", "Yes" if r["needs_diapers"] else "No",
              "Yes" if r["needs_formula"] else "No", r["created_at"]]
         )

@@ -114,6 +114,7 @@ def register():
         primary_last_name = request.form.get("primary_last_name", "").strip()
         phone = request.form.get("phone", "").strip()
         email = request.form.get("email", "").strip()
+        address = request.form.get("address", "").strip()
         id_verified = bool(request.form.get("id_verified"))
         needs_diapers = bool(request.form.get("needs_diapers"))
         needs_formula = bool(request.form.get("needs_formula"))
@@ -272,7 +273,7 @@ def register():
             primary_first_name, primary_last_name, phone, email, pref_ids, member_rows,
             designate_rows=designate_rows,
             id_verified=id_verified, needs_diapers=needs_diapers, needs_formula=needs_formula,
-            only_one_timeslot=only_one_timeslot,
+            only_one_timeslot=only_one_timeslot, address=address,
         )
         data = db.get_household(household_id)
         household = data["household"]

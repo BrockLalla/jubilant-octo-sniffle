@@ -247,6 +247,9 @@ def init_db():
     _ensure_columns(conn, "households", {
         "card_made_at": "TEXT",
     })
+    _ensure_columns(conn, "households", {
+        "address": "TEXT",
+    })
     # Backfill every household that already existed before this feature
     # shipped as "already done" -- most already have a real physical card,
     # just never tracked in the system, so a bare NULL here would
@@ -639,7 +642,7 @@ def possible_duplicate_people(confidence=None):
 def create_household(primary_first_name, primary_last_name, phone, email,
                       pref_timeslot_ids, member_rows, designate_rows=None,
                       id_verified=False, needs_diapers=False, needs_formula=False,
-                      only_one_timeslot=False):
+                      only_one_timeslot=False, address=None):
     """member_rows: list of dicts with first_name, last_name, date_of_birth,
     relationship. The primary applicant should be included as one of the
     rows with relationship='Self'. pref_timeslot_ids: up to 3 timeslot ids in
@@ -664,10 +667,10 @@ def create_household(primary_first_name, primary_last_name, phone, email,
 
         cur = conn.execute(
             "INSERT INTO households (household_code, primary_first_name, primary_last_name, phone, email, "
-            "pref1_timeslot_id, pref2_timeslot_id, pref3_timeslot_id, "
+            "address, pref1_timeslot_id, pref2_timeslot_id, pref3_timeslot_id, "
             "assigned_timeslot_id, id_verified, needs_diapers, needs_formula, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (household_code, primary_first_name, primary_last_name, phone, email,
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (household_code, primary_first_name, primary_last_name, phone, email, address,
              pref1, pref2, pref3, assigned_timeslot_id,
              1 if id_verified else 0, 1 if needs_diapers else 0, 1 if needs_formula else 0, ts),
         )
@@ -1050,15 +1053,16 @@ def set_card_made(household_id, made):
 
 def update_household(household_id, primary_first_name, primary_last_name, phone, email,
                       assigned_timeslot_id,
-                      id_verified=False, needs_diapers=False, needs_formula=False):
+                      id_verified=False, needs_diapers=False, needs_formula=False, address=None):
     """Designates aren't edited here -- see add_designate/update_designate/
     delete_designate, and the household detail page's own list of them."""
     conn = get_db()
     try:
         conn.execute(
             "UPDATE households SET primary_first_name = ?, primary_last_name = ?, phone = ?, email = ?, "
-            "assigned_timeslot_id = ?, id_verified = ?, needs_diapers = ?, needs_formula = ? WHERE id = ?",
-            (primary_first_name, primary_last_name, phone, email,
+            "address = ?, assigned_timeslot_id = ?, id_verified = ?, needs_diapers = ?, needs_formula = ? "
+            "WHERE id = ?",
+            (primary_first_name, primary_last_name, phone, email, address,
              assigned_timeslot_id, 1 if id_verified else 0, 1 if needs_diapers else 0,
              1 if needs_formula else 0, household_id),
         )
@@ -1198,7 +1202,7 @@ def anonymize_household(household_id):
     try:
         conn.execute(
             "UPDATE households SET primary_first_name = 'Removed', primary_last_name = '(anonymized)', "
-            "phone = NULL, email = NULL, anonymized_at = ? WHERE id = ?",
+            "phone = NULL, email = NULL, address = NULL, anonymized_at = ? WHERE id = ?",
             (now_iso(), household_id),
         )
         conn.execute(
