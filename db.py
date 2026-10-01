@@ -755,10 +755,23 @@ def _household_order_by(sort, direction):
 
 
 def search_households(query, sort=None, direction="asc"):
-    """Search by primary name, member name, phone, or household code."""
+    """Search by primary name, member name, phone, or household code.
+
+    A numeric query is anchored rather than matched "contains anywhere":
+    the code as a prefix (how a code is actually typed) and the phone as a
+    suffix (how people search "last 4 digits"). An anywhere-in-the-string
+    match on a short code against a 10-digit phone number produces frequent,
+    coincidental matches on unrelated households -- e.g. typing household
+    code "2135" could surface a household whose phone number happens to
+    contain "2135" in the middle somewhere. Name fields keep "contains
+    anywhere" since that's the expected behavior for partial name search.
+    """
     conn = get_db()
     try:
-        like = f"%{query.strip()}%"
+        q = query.strip()
+        name_like = f"%{q}%"
+        code_like = f"{q}%" if q.isdigit() else name_like
+        phone_like = f"%{q}" if q.isdigit() else name_like
         rows = conn.execute(
             """
             SELECT DISTINCT h.*, (h.primary_first_name || ' ' || h.primary_last_name) AS primary_name
@@ -771,7 +784,7 @@ def search_households(query, sort=None, direction="asc"):
             ORDER BY h.primary_last_name, h.primary_first_name
             LIMIT 25
             """,
-            (like, like, like, like),
+            (name_like, phone_like, code_like, name_like),
         ).fetchall()
         results = []
         for row in rows:
@@ -806,7 +819,11 @@ def search_households_for_checkin(query):
     already was."""
     conn = get_db()
     try:
-        like = f"%{query.strip()}%"
+        q = query.strip()
+        name_like = f"%{q}%"
+        # A numeric query is anchored as a code prefix rather than
+        # "contains anywhere" -- see search_households() for why.
+        code_like = f"{q}%" if q.isdigit() else name_like
         rows = conn.execute(
             """
             SELECT h.*, (h.primary_first_name || ' ' || h.primary_last_name) AS primary_name,
@@ -819,7 +836,7 @@ def search_households_for_checkin(query):
             ORDER BY CAST(h.household_code AS INTEGER)
             LIMIT 25
             """,
-            (like, like, like, like),
+            (code_like, name_like, name_like, name_like),
         ).fetchall()
         return [dict(r) for r in rows]
     finally:
