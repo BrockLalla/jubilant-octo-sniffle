@@ -11,6 +11,20 @@
     {{ household.household_code }} &middot; Registered {{ household.created_at[:10] }}
     &nbsp; {{ macros.status_badge(members|length) }}
   </p>
+
+  {% if incomplete_people %}
+    <div class="alert alert-warning">
+      ⚠️ Incomplete &mdash; Government ID not yet verified for:
+      <ul style="margin:0.5rem 0 0; padding-left:1.25rem;">
+        {% for p in incomplete_people %}
+          <li>{{ p.name }} ({{ p.role }})</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% else %}
+    <div class="alert alert-success">✅ Complete &mdash; Government ID verified for everyone in this household.</div>
+  {% endif %}
+
   <button type="submit" form="household-info-form" class="btn btn-primary">Save Household Info</button>
 
   {% if current_admin.is_super_admin %}

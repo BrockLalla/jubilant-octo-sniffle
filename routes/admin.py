@@ -675,6 +675,9 @@ def household_detail(household_id):
         household=data["household"],
         members=data["members"],
         designates=data["designates"],
+        incomplete_people=db.household_incomplete_people(
+            data["household"], data["members"], data["designates"]
+        ),
         current_year=datetime.date.today().year,
         timeslots=db.list_timeslots(active_only=False),
         current_admin=db.get_admin_user(session.get("admin_username")),

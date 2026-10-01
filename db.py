@@ -738,6 +738,31 @@ def get_household(household_id):
         conn.close()
 
 
+def household_incomplete_people(household, members, designates):
+    """People in this household still needing a Government ID check --
+    powers a "form complete?" flag on the household page so staff know who
+    to follow up with. The primary applicant counts as verified if EITHER
+    the household record's own checkbox or their 'Self' row in members says
+    so: the admin UI exposes both independently (one on the Household Info
+    form, one in the Members table), so either can be checked without the
+    other updating, and treating just one as authoritative would produce
+    false "incomplete" flags for people who are actually verified.
+    """
+    incomplete = []
+    self_verified = any(m["id_verified"] for m in members if m["relationship"] == "Self")
+    if not (household["id_verified"] or self_verified):
+        incomplete.append({"name": household["primary_name"], "role": "Primary Applicant"})
+    for m in members:
+        if m["relationship"] == "Self":
+            continue
+        if not m["id_verified"]:
+            incomplete.append({"name": m["name"], "role": m["relationship"] or "Household Member"})
+    for d in designates:
+        if not d["id_verified"]:
+            incomplete.append({"name": d["name"], "role": "Pickup Designate"})
+    return incomplete
+
+
 # Sort keys the Households admin list can use -- "status" reuses "size"
 # since a household's status badge is derived purely from its member count.
 _HOUSEHOLD_SORT_COLUMNS = {
