@@ -8,6 +8,7 @@ and flash a warning rather than losing the registration itself.
 import html
 import re
 import smtplib
+import socket
 import ssl
 from email.message import EmailMessage
 from string import Template
@@ -38,6 +39,40 @@ DEFAULT_EMAIL_BODY = (
 
 class EmailNotConfigured(Exception):
     pass
+
+
+def _connect_ipv4(host, port, timeout, source_address=None):
+    """Render's network can't route smtp.gmail.com's IPv6 address, but
+    getaddrinfo() still returns it first -- the TCP handshake half-completes
+    then gets dropped, which smtplib surfaces as a confusing "Connection
+    unexpectedly closed" instead of a clean timeout. Forcing IPv4 here is
+    the documented fix for this specific Render+Gmail combination."""
+    last_err = None
+    for family, socktype, proto, _, sockaddr in socket.getaddrinfo(
+        host, port, socket.AF_INET, socket.SOCK_STREAM
+    ):
+        sock = socket.socket(family, socktype, proto)
+        try:
+            sock.settimeout(timeout)
+            if source_address:
+                sock.bind(source_address)
+            sock.connect(sockaddr)
+            return sock
+        except OSError as e:
+            sock.close()
+            last_err = e
+    raise last_err
+
+
+class _IPv4SMTP(smtplib.SMTP):
+    def _get_socket(self, host, port, timeout):
+        return _connect_ipv4(host, port, timeout, self.source_address)
+
+
+class _IPv4SMTP_SSL(smtplib.SMTP_SSL):
+    def _get_socket(self, host, port, timeout):
+        sock = _connect_ipv4(host, port, timeout, self.source_address)
+        return self.context.wrap_socket(sock, server_hostname=self._host)
 
 
 def _get_config():
@@ -88,11 +123,11 @@ def _send(to_email, subject, body, html_body=None):
 
     context = ssl.create_default_context()
     if cfg["smtp_port"] == 465:
-        with smtplib.SMTP_SSL(cfg["smtp_host"], cfg["smtp_port"], context=context, timeout=15) as server:
+        with _IPv4SMTP_SSL(cfg["smtp_host"], cfg["smtp_port"], context=context, timeout=15) as server:
             server.login(cfg["smtp_username"], cfg["smtp_password"])
             server.send_message(msg)
     else:
-        with smtplib.SMTP(cfg["smtp_host"], cfg["smtp_port"], timeout=15) as server:
+        with _IPv4SMTP(cfg["smtp_host"], cfg["smtp_port"], timeout=15) as server:
             server.starttls(context=context)
             server.login(cfg["smtp_username"], cfg["smtp_password"])
             server.send_message(msg)
