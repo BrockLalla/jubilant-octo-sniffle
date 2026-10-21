@@ -39,7 +39,7 @@
   </form>
 
   <div class="table-scroll">
-    <table>
+    <table class="households-table">
       {% set params = {'q': query, 'incomplete': '1' if incomplete_only else None, 'no_card': '1' if no_card_only else None} %}
       <tr>
         {{ macros.sort_th('Household Code', 'code', sort, direction, 'admin.households', params) }}

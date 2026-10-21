@@ -516,6 +516,21 @@ textarea {
 /* Simple tables for admin */
 .table-scroll {
   overflow-x: auto;
+  /* Always-visible scrollbar: the default overlay scrollbar (macOS, touch)
+     stays hidden until you scroll, so a table that's slightly too wide just
+     looks cut off. */
+  scrollbar-color: #9aa5b1 #e6eaee;
+}
+.table-scroll::-webkit-scrollbar {
+  height: 12px;
+}
+.table-scroll::-webkit-scrollbar-track {
+  background: #e6eaee;
+  border-radius: 6px;
+}
+.table-scroll::-webkit-scrollbar-thumb {
+  background: #9aa5b1;
+  border-radius: 6px;
 }
 
 table {
@@ -556,6 +571,33 @@ th {
 .table-scroll th,
 .table-scroll td {
   padding: 0.45rem 0.6rem;
+}
+
+/* Households list: seven columns (the Status badge and the View / Edit
+   button are the widest) have to fit a ~1000px window without the button
+   getting clipped at the edge, so this table runs tighter than the others
+   and keeps phone numbers on one line. */
+.households-table th,
+.households-table td {
+  padding: 0.4rem 0.45rem;
+}
+.households-table td:nth-child(3) {
+  white-space: nowrap;
+}
+/* "Household Code" is the widest header; letting it wrap to two lines
+   gives back ~100px for the columns that can't. */
+.households-table th:first-child,
+.households-table th:first-child .sort-link {
+  white-space: normal;
+}
+.households-table .status-badge {
+  font-size: 0.85rem;
+  padding: 0.25rem 0.55rem;
+}
+.households-table .btn-small {
+  padding: 0.4rem 0.75rem;
+  margin-right: 0;
+  white-space: nowrap;
 }
 
 .dup-table td:nth-child(1),
