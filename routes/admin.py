@@ -560,6 +560,28 @@ def toggle_card_made(household_id):
     ))
 
 
+def _prompt_for_supply_boxes(household_id, member_name):
+    """A member just became (or was added as) a child under 2. Diapers and
+    formula are a staff choice, never ticked automatically, so say so right
+    away -- naming only the boxes that aren't ticked yet."""
+    household = db.get_household(household_id)["household"]
+    missing = [
+        label
+        for label, key in (("Diapers Needed", "needs_diapers"), ("Formula Needed", "needs_formula"))
+        if not household[key]
+    ]
+    if missing:
+        flash(
+            f"{member_name} is under 2. Under Household Info, tick {' and/or '.join(missing)} "
+            f"if this household needs it.",
+            "warning",
+        )
+
+
+def _is_under_2(dob):
+    return bool(dob) and db.age_parts(dob)[0] < 2
+
+
 @bp.route("/households/<int:household_id>", methods=["GET", "POST"])
 @login_required
 def household_detail(household_id):
@@ -627,9 +649,10 @@ def household_detail(household_id):
                     flash(f"Household code changed from {old_code} to {new_code}.", "success")
         elif action == "update_member":
             member_id = int(request.form.get("member_id"))
+            old_dob = db.get_member_dob(member_id)
             try:
                 dob = db.dob_for_edited_age(
-                    db.get_member_dob(member_id),
+                    old_dob,
                     request.form.get("age_years"),
                     request.form.get("age_months"),
                 )
@@ -645,6 +668,10 @@ def household_detail(household_id):
                     id_verified=bool(request.form.get("id_verified")),
                 )
                 flash("Member updated.", "success")
+                if _is_under_2(dob) and not _is_under_2(old_dob):
+                    _prompt_for_supply_boxes(
+                        household_id, request.form.get("first_name", "").strip() or "This member"
+                    )
         elif action == "delete_member":
             db.delete_member(int(request.form.get("member_id")))
             flash("Member removed.", "success")
@@ -714,6 +741,8 @@ def household_detail(household_id):
                             id_verified=bool(request.form.get("id_verified")),
                         )
                         flash("Member added.", "success")
+                        if _is_under_2(dob):
+                            _prompt_for_supply_boxes(household_id, first_name or last_name)
         return redirect(url_for("admin.household_detail", household_id=household_id))
 
     data = db.get_household(household_id)
