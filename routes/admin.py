@@ -626,17 +626,18 @@ def household_detail(household_id):
                     )
                     flash(f"Household code changed from {old_code} to {new_code}.", "success")
         elif action == "update_member":
+            member_id = int(request.form.get("member_id"))
             try:
-                dob = db.combine_date_parts(
-                    request.form.get("date_of_birth_year"),
-                    request.form.get("date_of_birth_month"),
-                    request.form.get("date_of_birth_day"),
+                dob = db.dob_for_edited_age(
+                    db.get_member_dob(member_id),
+                    request.form.get("age_years"),
+                    request.form.get("age_months"),
                 )
             except ValueError:
-                flash("That date of birth wasn't complete — member not updated.", "error")
+                flash("That age wasn't valid — member not updated.", "error")
             else:
                 db.update_member(
-                    int(request.form.get("member_id")),
+                    member_id,
                     request.form.get("first_name", "").strip(),
                     request.form.get("last_name", "").strip(),
                     dob,
@@ -665,13 +666,11 @@ def household_detail(household_id):
             last_name = request.form.get("last_name", "").strip()
             if first_name or last_name:
                 try:
-                    dob = db.combine_date_parts(
-                        request.form.get("date_of_birth_year"),
-                        request.form.get("date_of_birth_month"),
-                        request.form.get("date_of_birth_day"),
+                    dob = db.dob_for_edited_age(
+                        None, request.form.get("age_years"), request.form.get("age_months")
                     )
                 except ValueError:
-                    flash("That date of birth wasn't complete — member not added.", "error")
+                    flash("That age wasn't valid — member not added.", "error")
                 else:
                     dup = db.find_duplicate_person(first_name, last_name, dob, exclude_household_id=household_id)
                     if dup and dup["confidence"] == "high":
@@ -684,7 +683,7 @@ def household_detail(household_id):
                         if dup:
                             flash(
                                 f"Note: {first_name} {last_name} has the same name as someone under household "
-                                f"{dup['household_code']} ({dup['primary_name']}), but there's no birth year on "
+                                f"{dup['household_code']} ({dup['primary_name']}), but there's no age on "
                                 f"file to confirm it's the same person — added anyway, worth a double check.",
                                 "warning",
                             )
@@ -700,6 +699,15 @@ def household_detail(household_id):
         return redirect(url_for("admin.household_detail", household_id=household_id))
 
     data = db.get_household(household_id)
+    for m in data["members"]:
+        # Ages shown (and edited) in years; months only for under-2s, where
+        # they drive the diaper/formula cutoff.
+        m["age_years"] = m["age_months"] = ""
+        if m["date_of_birth"]:
+            years, months = db.age_parts(m["date_of_birth"])
+            if years >= 0:
+                m["age_years"] = years
+                m["age_months"] = months if years < 2 else ""
     return render_template(
         "admin/household_detail.html",
         household=data["household"],
@@ -708,7 +716,6 @@ def household_detail(household_id):
         incomplete_people=db.household_incomplete_people(
             data["household"], data["members"], data["designates"]
         ),
-        current_year=datetime.date.today().year,
         timeslots=db.list_timeslots(active_only=False),
         current_admin=db.get_admin_user(session.get("admin_username")),
     )

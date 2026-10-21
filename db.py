@@ -293,6 +293,42 @@ def init_db():
             "INSERT INTO settings (key, value) VALUES ('designates_backfill_done', '1') "
             "ON CONFLICT(key) DO UPDATE SET value = excluded.value"
         )
+
+    # One-time: discard any real birth month/day -- the app records ages,
+    # not birthdates. Almost every stored date is already just a placeholder
+    # for "born that year" (January 1st), which holds nothing private and is
+    # left exactly as is, so past grant reports don't shift. Only a date
+    # with a real birth month/day is coarsened, and each person keeps the
+    # age they have today: a baby under 2 keeps their exact months (that
+    # drives when diapers/formula stop); anyone else snaps to the start of
+    # their birth year, or its end if their birthday hasn't come round yet
+    # this year. Irreversible by design. Same settings-flag pattern as above,
+    # so it's safe on every startup and re-applies itself if an older backup
+    # (still holding real dates) is ever restored.
+    if not conn.execute("SELECT 1 FROM settings WHERE key = 'dob_to_ages_done'").fetchone():
+        today = datetime.date.today()
+        for row in conn.execute(
+            "SELECT id, date_of_birth FROM members "
+            "WHERE date_of_birth IS NOT NULL AND date_of_birth != '' AND substr(date_of_birth, 6) != '01-01'"
+        ).fetchall():
+            try:
+                years, months = age_parts(row["date_of_birth"])
+                birth_year = int(row["date_of_birth"][:4])
+                if years < 0:
+                    continue
+                if years < 2:
+                    estimate = age_to_approximate_dob(years, months)
+                elif years == today.year - birth_year:
+                    estimate = f"{birth_year}-01-01"
+                else:
+                    estimate = f"{birth_year}-12-31"
+            except ValueError:
+                continue
+            conn.execute("UPDATE members SET date_of_birth = ? WHERE id = ?", (estimate, row["id"]))
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES ('dob_to_ages_done', '1') "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+        )
     conn.commit()
     conn.close()
 
@@ -377,47 +413,31 @@ def compact_timeslot_label(day_of_week, start_time, end_time):
     return f"{DAY_NAMES[day_of_week][:3]} {start_s}-{end_s}"
 
 
-def combine_date_parts(year, month, day):
-    """Combine dropdown-selected year/month/day strings into an ISO date.
-
-    Returns None if all three are blank (date not provided). Raises
-    ValueError if only some are filled in, or if the combination isn't a
-    real calendar date (e.g. Feb 30) — callers should show a validation
-    error rather than silently dropping a bad date.
-    """
-    year = (year or "").strip()
-    month = (month or "").strip()
-    day = (day or "").strip()
-    if not year and not month and not day:
-        return None
-    if not (year and month and day):
-        raise ValueError("Incomplete date")
-    try:
-        return datetime.date(int(year), int(month), int(day)).isoformat()
-    except (ValueError, TypeError):
-        raise ValueError("Invalid date")
-
-
-def age_to_approximate_dob(years=0, months=0):
+def age_to_approximate_dob(years=0, months=None):
     """Approximates a date of birth from an age given as years and/or
-    months (either can be 0/blank) -- used by the public registration
-    form, which asks for age rather than an exact birthdate (simpler to
-    fill in, and doesn't collect a specific birthdate the app doesn't
-    actually need). A months component matters specifically for a child
-    under 2, where "0 years old" isn't precise enough to tell a
-    2-month-old from a 20-month-old for the under-2 diaper check -- for
-    everyone else, months is just left at 0. Grant report age brackets
-    and that diaper check both key off date_of_birth and need it to age
-    forward correctly as real time passes, so this reconstructs a real
-    date rather than storing a static age that would go stale. Raises
-    ValueError for a negative or implausible combined age."""
+    months -- the app records ages, never real birthdates (simpler to fill
+    in, and not something the app needs). A months component matters
+    specifically for a child under 2, where "0 years old" isn't precise
+    enough to tell a 2-month-old from a 20-month-old for the under-2
+    diaper/formula check. Grant report age brackets and that check both
+    key off the stored date and need it to age forward correctly as real
+    time passes, so this reconstructs an estimated date rather than
+    storing a static age that would go stale.
+
+    months=None means "not given" (everyone past infancy): the estimate
+    lands half a year into the stated age, so on average the next
+    birthday is neither early nor late. An explicit months (including 0)
+    is taken exactly. Raises ValueError for a negative or implausible
+    age."""
     years = int(years or 0)
-    months = int(months or 0)
-    if years < 0 or months < 0:
+    given_months = None if months in (None, "") else int(months)
+    if years < 0 or (given_months is not None and given_months < 0):
         raise ValueError("Age can't be negative")
-    total_months = years * 12 + months
+    total_months = years * 12 + (given_months or 0)
     if not (0 <= total_months <= 119 * 12):
         raise ValueError("Implausible age")
+    if given_months is None:
+        total_months += 6
 
     today = datetime.date.today()
     total = today.year * 12 + (today.month - 1) - total_months
@@ -425,6 +445,49 @@ def age_to_approximate_dob(years=0, months=0):
     month = month0 + 1
     day = min(today.day, calendar.monthrange(year, month)[1])
     return datetime.date(year, month, day).isoformat()
+
+
+def age_parts(dob_iso):
+    """(years, months) of age today for a stored date -- months is the
+    leftover 0-11 after whole years."""
+    dob = datetime.date.fromisoformat(dob_iso)
+    today = datetime.date.today()
+    total = (today.year - dob.year) * 12 + (today.month - dob.month) - (1 if today.day < dob.day else 0)
+    return divmod(total, 12)
+
+
+def dob_for_edited_age(existing_dob, years, months):
+    """The stored date to save after an admin edits a member's age.
+
+    An age that's unchanged from what's already shown keeps the existing
+    stored date untouched -- re-estimating on every save (say, just to
+    tick an ID checkbox) would quietly slide that person's next birthday
+    around. Months are only shown for children under 2, so a blank months
+    box on anyone else counts as unchanged. Both blank clears the age.
+    Raises ValueError for anything that isn't a sensible number."""
+    years = str(years if years is not None else "").strip()
+    months = str(months if months is not None else "").strip()
+    if not years and not months:
+        return None
+    y = int(years or 0)
+    m = int(months) if months else None
+    if y < 0 or (m is not None and m < 0):
+        raise ValueError("Age can't be negative")
+    if existing_dob:
+        cur_y, cur_m = age_parts(existing_dob)
+        shown_m = cur_m if cur_y < 2 else None
+        if y == cur_y and (m is None or m == shown_m):
+            return existing_dob
+    return age_to_approximate_dob(y, m)
+
+
+def get_member_dob(member_id):
+    conn = get_db()
+    try:
+        row = conn.execute("SELECT date_of_birth FROM members WHERE id = ?", (member_id,)).fetchone()
+        return row["date_of_birth"] if row else None
+    finally:
+        conn.close()
 
 
 def next_household_number(conn):
@@ -537,13 +600,11 @@ def find_duplicate_person(first_name, last_name, date_of_birth, exclude_househol
     household -- used to catch the same person being registered twice under
     two household codes (double-dipping on pickups).
 
-    Matches on first name + last name + birth YEAR, not the full date.
-    Nearly every DOB in this dataset turned out to be January 1st of the
-    birth year -- a placeholder used when only the birth year was actually
-    known -- so comparing full dates was really just comparing years
-    dressed up as more precise than it actually was. Year of birth is real
-    signal (it's what was actually collected) and a name + year match
-    hard-blocks automatically.
+    Matches on first name + last name + birth YEAR within one year, not the
+    full date. The stored date is only ever an estimate built from a stated
+    age (and the same person's age, given at two different times, can land
+    in neighbouring years), so exact-year equality would miss real
+    duplicates. A name + near-year match hard-blocks automatically.
 
     When no DOB was given at all -- not even a year -- falls back to
     matching on name alone. That's a much weaker signal (nothing to rule
@@ -566,8 +627,8 @@ def find_duplicate_person(first_name, last_name, date_of_birth, exclude_househol
         params = [first_name.strip(), last_name.strip()]
         year = date_of_birth[:4] if date_of_birth else None
         if year:
-            q += " AND substr(m.date_of_birth, 1, 4) = ?"
-            params.append(year)
+            q += " AND ABS(CAST(substr(m.date_of_birth, 1, 4) AS INTEGER) - ?) <= 1"
+            params.append(int(year))
         if exclude_household_id:
             q += " AND m.household_id != ?"
             params.append(exclude_household_id)
@@ -589,10 +650,11 @@ def possible_duplicate_people(confidence=None):
     from the old spreadsheet system and never passed through
     find_duplicate_person (which only runs at registration time).
 
-    confidence: None for all pairs, "high" for name + matching birth year,
-    or "low" for a name match where at least one side has no birth year on
-    file to compare. A name match where both sides HAVE a birth year but
-    the years differ isn't a duplicate at all (different people, same
+    confidence: None for all pairs, "high" for name + birth year within a
+    year of each other (stored dates are estimates from stated ages), or
+    "low" for a name match where at least one side has no age on file to
+    compare. A name match where both sides HAVE an age but they're more
+    than a year apart isn't a duplicate at all (different people, same
     name) and is never returned.
     """
     conn = get_db()
@@ -615,7 +677,8 @@ def possible_duplicate_people(confidence=None):
             "  AND ("
             "    m1.date_of_birth IS NULL OR m1.date_of_birth = '' OR "
             "    m2.date_of_birth IS NULL OR m2.date_of_birth = '' OR "
-            "    substr(m1.date_of_birth, 1, 4) = substr(m2.date_of_birth, 1, 4)"
+            "    ABS(CAST(substr(m1.date_of_birth, 1, 4) AS INTEGER) - "
+            "        CAST(substr(m2.date_of_birth, 1, 4) AS INTEGER)) <= 1"
             "  ) "
             "ORDER BY m1.last_name COLLATE NOCASE, m1.first_name COLLATE NOCASE"
         ).fetchall()

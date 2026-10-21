@@ -305,27 +305,8 @@ textarea {
   padding-left: 1.5rem;
 }
 
-.dob-row {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.dob-row select {
-  width: auto;
-  flex: 1 1 120px;
-  min-width: 90px;
-}
-
-/* The month name ("September") is the longest option text -- give that
-   select more room so it doesn't truncate. */
-.dob-row select:first-child {
-  flex: 1 1 150px;
-  min-width: 140px;
-}
-
 /* Registration: a child's Years/Months age boxes sit side by side, same
-   pattern as .dob-row above. */
+   side-by-side pattern. */
 .age-input-row {
   display: flex;
   gap: 0.5rem;
@@ -343,19 +324,19 @@ textarea {
   min-width: 160px;
 }
 
-/* The DOB cell holds 3 selects (.dob-row); without forcing nowrap here,
-   .dob-row's flex-wrap would stack them into an ugly two-row mess. These
-   select min-widths are just enough to fit their content (a 4-digit year,
-   2-digit day, "September") -- no extra cell-level min-width on top of
-   that, which was making the whole table wider than it needed to be. */
-.members-table .dob-row {
-  flex-wrap: nowrap;
+/* Age cell: years and (for under-2s) months as two compact number boxes. */
+.members-table .age-cell {
+  white-space: nowrap;
 }
-.members-table .dob-row select {
-  min-width: 56px;
+.members-table .age-cell input {
+  width: 4.75rem;
+  min-width: 0;
+  display: inline-block;
 }
-.members-table .dob-row select:first-child {
-  min-width: 96px;
+.members-table .age-cell .age-unit {
+  margin: 0 0.5rem 0 0.2rem;
+  color: #5c6670;
+  font-size: 0.9rem;
 }
 .members-table td:last-child {
   white-space: nowrap;

@@ -154,21 +154,13 @@
     <h2>Members ({{ members|length }})</h2>
     <div class="table-scroll">
     <table class="members-table table-centered">
-      <tr><th>First Name</th><th>Last Name</th><th>Date of Birth</th><th>Relationship</th><th>ID Verified</th><th></th></tr>
+      <tr><th>First Name</th><th>Last Name</th><th>Age</th><th>Relationship</th><th>ID Verified</th><th></th></tr>
       {% for m in members %}
-        {% set dob_parts = m.date_of_birth.split('-') if m.date_of_birth else [] %}
         <tr>
           <td><input type="text" name="first_name" value="{{ m.first_name }}" form="member-form-{{ m.id }}"></td>
           <td><input type="text" name="last_name" value="{{ m.last_name }}" form="member-form-{{ m.id }}"></td>
-          <td>
-            {{ macros.dob_select(
-              'date_of_birth',
-              month=(dob_parts[1]|int|string if dob_parts|length == 3 else None),
-              day=(dob_parts[2]|int|string if dob_parts|length == 3 else None),
-              year=(dob_parts[0] if dob_parts|length == 3 else None),
-              current_year=current_year,
-              form_id='member-form-' ~ m.id
-            ) }}
+          <td class="age-cell">
+            <input type="number" name="age_years" value="{{ m.age_years }}" min="0" max="119" aria-label="Age in years" form="member-form-{{ m.id }}"><span class="age-unit">yrs</span><input type="number" name="age_months" value="{{ m.age_months }}" min="0" max="11" aria-label="Months (babies under 2)" form="member-form-{{ m.id }}"><span class="age-unit">mo</span>
           </td>
           <td><input type="text" name="relationship" value="{{ m.relationship }}" form="member-form-{{ m.id }}"></td>
           <td>
@@ -192,6 +184,10 @@
       {% endfor %}
     </table>
     </div>
+    <p class="hint">
+      Ages are estimates and move forward on their own &mdash; no need to update them each year. Fill in months
+      only for babies under 2: that's what decides when diapers and formula stop.
+    </p>
 
     <h3>Add a Member</h3>
     <form method="post">
@@ -201,8 +197,17 @@
       <input type="text" name="first_name" required>
       <label>Last Name</label>
       <input type="text" name="last_name" required>
-      <label>Date of Birth</label>
-      {{ macros.dob_select('date_of_birth', current_year=current_year) }}
+      <label>Age</label>
+      <div class="age-input-row">
+        <div class="age-input-col">
+          <label class="hint">Years</label>
+          <input type="number" name="age_years" min="0" max="119">
+        </div>
+        <div class="age-input-col">
+          <label class="hint">Months (babies under 2)</label>
+          <input type="number" name="age_months" min="0" max="11">
+        </div>
+      </div>
       <label>Relationship</label>
       <input type="text" name="relationship" placeholder="e.g. Child">
       <label class="checkbox-label">
