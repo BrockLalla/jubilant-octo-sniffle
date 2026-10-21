@@ -373,17 +373,47 @@ def format_date_short(iso_str):
     return d.strftime("%b %-d, %Y")
 
 
-def household_status(member_count):
-    """Color-coded household size category, always derived from the live
-    member count rather than stored/typed in — same reasoning as household
-    size itself: a computed field can't drift out of sync."""
+# A two-person household with a child under this age shows as a family
+# rather than a couple (a parent and their kid isn't a "couple"); once the
+# child reaches it, the household reads as two adults.
+FAMILY_CHILD_AGE_LIMIT = 16
+
+# Same rule as has_young_child(), for list queries (h = the households row).
+_HAS_YOUNG_CHILD_SQL = (
+    "EXISTS (SELECT 1 FROM members mc WHERE mc.household_id = h.id "
+    f"AND mc.date_of_birth > date('now', '-{FAMILY_CHILD_AGE_LIMIT} years')) AS has_young_child"
+)
+
+
+def household_status(member_count, has_young_child=False):
+    """Color-coded household category, always derived from the live member
+    count (and, for two people, whether one is a young child) rather than
+    stored/typed in — same reasoning as household size itself: a computed
+    field can't drift out of sync."""
     if member_count <= 1:
         return {"code": "S", "label": "Single", "color": "yellow"}
     if member_count == 2:
+        if has_young_child:
+            return {"code": "F", "label": "Family of 2", "color": "red"}
         return {"code": "C", "label": "Couple", "color": "blue"}
     if member_count <= 4:
         return {"code": "F", "label": "Family of 3-4", "color": "red"}
     return {"code": "F+", "label": "Family of 5+", "color": "green"}
+
+
+def has_young_child(members):
+    """True if any member (dicts with date_of_birth) is under
+    FAMILY_CHILD_AGE_LIMIT. For pages that already have the member list."""
+    for m in members:
+        dob = m.get("date_of_birth")
+        if not dob:
+            continue
+        try:
+            if age_in_years(dob) < FAMILY_CHILD_AGE_LIMIT:
+                return True
+        except ValueError:
+            continue
+    return False
 
 
 DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -941,7 +971,12 @@ def search_households(query, sort=None, direction="asc"):
             members = conn.execute(
                 "SELECT COUNT(*) FROM members WHERE household_id = ?", (row["id"],)
             ).fetchone()[0]
-            results.append({**dict(row), "member_count": members})
+            young = conn.execute(
+                "SELECT EXISTS (SELECT 1 FROM members WHERE household_id = ? AND date_of_birth > "
+                f"date('now', '-{FAMILY_CHILD_AGE_LIMIT} years'))",
+                (row["id"],),
+            ).fetchone()[0]
+            results.append({**dict(row), "member_count": members, "has_young_child": bool(young)})
 
         if sort:
             reverse = direction == "desc"
@@ -975,9 +1010,10 @@ def search_households_for_checkin(query):
         # "contains anywhere" -- see search_households() for why.
         code_like = f"{q}%" if q.isdigit() else name_like
         rows = conn.execute(
-            """
+            f"""
             SELECT h.*, (h.primary_first_name || ' ' || h.primary_last_name) AS primary_name,
-                   (SELECT COUNT(*) FROM members m WHERE m.household_id = h.id) AS member_count
+                   (SELECT COUNT(*) FROM members m WHERE m.household_id = h.id) AS member_count,
+                   {_HAS_YOUNG_CHILD_SQL}
             FROM households h
             WHERE h.household_code LIKE ?
                OR h.primary_first_name LIKE ?
@@ -999,7 +1035,7 @@ def list_all_households(sort=None, direction="asc"):
         order_by = _household_order_by(sort, direction)
         rows = conn.execute(
             f"SELECT h.*, (h.primary_first_name || ' ' || h.primary_last_name) AS primary_name, "
-            f"(SELECT COUNT(*) FROM members m WHERE m.household_id = h.id) AS member_count "
+            f"(SELECT COUNT(*) FROM members m WHERE m.household_id = h.id) AS member_count, {_HAS_YOUNG_CHILD_SQL} "
             f"FROM households h ORDER BY {order_by}"
         ).fetchall()
         return [dict(r) for r in rows]
@@ -1017,7 +1053,7 @@ def list_incomplete_households(sort=None, direction="asc"):
         order_by = _household_order_by(sort, direction)
         rows = conn.execute(
             f"SELECT h.*, (h.primary_first_name || ' ' || h.primary_last_name) AS primary_name, "
-            f"(SELECT COUNT(*) FROM members m WHERE m.household_id = h.id) AS member_count "
+            f"(SELECT COUNT(*) FROM members m WHERE m.household_id = h.id) AS member_count, {_HAS_YOUNG_CHILD_SQL} "
             f"FROM households h WHERE {_INCOMPLETE_WHERE} ORDER BY {order_by}"
         ).fetchall()
         return [dict(r) for r in rows]
@@ -1035,7 +1071,7 @@ def list_households_without_card(sort=None, direction="asc"):
         order_by = _household_order_by(sort, direction)
         rows = conn.execute(
             f"SELECT h.*, (h.primary_first_name || ' ' || h.primary_last_name) AS primary_name, "
-            f"(SELECT COUNT(*) FROM members m WHERE m.household_id = h.id) AS member_count "
+            f"(SELECT COUNT(*) FROM members m WHERE m.household_id = h.id) AS member_count, {_HAS_YOUNG_CHILD_SQL} "
             f"FROM households h WHERE h.card_made_at IS NULL ORDER BY {order_by}"
         ).fetchall()
         return [dict(r) for r in rows]

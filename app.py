@@ -52,6 +52,7 @@ def create_app():
     db.init_db()
     offsite_backup.start_background_scheduler()
     app.jinja_env.globals["household_status"] = db.household_status
+    app.jinja_env.globals["has_young_child"] = db.has_young_child
 
     @app.url_defaults
     def version_static_urls(endpoint, values):

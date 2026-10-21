@@ -22,7 +22,7 @@
     <h2>{{ household.primary_name }}'s Household</h2>
     <p>
       <strong>Household Size:</strong> {{ members|length }} {{ 'person' if members|length == 1 else 'people' }}
-      &nbsp; {{ macros.status_badge(members|length) }}
+      &nbsp; {{ macros.status_badge(members|length, has_young_child(members)) }}
     </p>
     <table>
       <tr><th>Name</th><th>Relationship</th></tr>

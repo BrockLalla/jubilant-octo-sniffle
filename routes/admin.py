@@ -973,7 +973,7 @@ def export_households():
          "ID Verified", "Needs Diapers", "Needs Formula", "Registered"]
     )
     for r in rows:
-        status = db.household_status(r["member_count"])
+        status = db.household_status(r["member_count"], r["has_young_child"])
         writer.writerow(
             [r["household_code"], r["primary_first_name"], r["primary_last_name"], r["phone"] or "",
              r["address"] or "", r["member_count"], f"{status['code']} - {status['label']}",

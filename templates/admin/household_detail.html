@@ -9,7 +9,7 @@
   <h1>{{ household.primary_name }}</h1>
   <p class="muted">
     {{ household.household_code }} &middot; Registered {{ household.created_at[:10] }}
-    &nbsp; {{ macros.status_badge(members|length) }}
+    &nbsp; {{ macros.status_badge(members|length, has_young_child(members)) }}
   </p>
 
   {% if incomplete_people %}

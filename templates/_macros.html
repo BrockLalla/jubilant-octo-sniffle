@@ -1,5 +1,5 @@
-{% macro status_badge(member_count) %}
-  {% set status = household_status(member_count) %}
+{% macro status_badge(member_count, young_child=False) %}
+  {% set status = household_status(member_count, young_child) %}
   <span class="status-badge status-{{ status.color }}">{{ status.code }} — {{ status.label }}</span>
 {% endmacro %}
 

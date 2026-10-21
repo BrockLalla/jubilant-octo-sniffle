@@ -5,7 +5,7 @@
   <h1>{{ household.primary_name }}'s Household</h1>
   <p class="muted">
     {{ household.household_code }} &middot; {{ members|length }} {{ 'person' if members|length == 1 else 'people' }}
-    &nbsp; {{ macros.status_badge(members|length) }}
+    &nbsp; {{ macros.status_badge(members|length, has_young_child(members)) }}
   </p>
 
   {% if supply_needs_aged_out %}
