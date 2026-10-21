@@ -160,7 +160,10 @@
           <td><input type="text" name="first_name" value="{{ m.first_name }}" form="member-form-{{ m.id }}"></td>
           <td><input type="text" name="last_name" value="{{ m.last_name }}" form="member-form-{{ m.id }}"></td>
           <td class="age-cell">
-            <input type="number" name="age_years" value="{{ m.age_years }}" min="0" max="119" aria-label="Age in years" form="member-form-{{ m.id }}"><span class="age-unit">yrs</span><input type="number" name="age_months" value="{{ m.age_months }}" min="0" max="11" aria-label="Months (babies under 2)" form="member-form-{{ m.id }}"><span class="age-unit">mo</span>
+            <input type="number" name="age_years" value="{{ m.age_years }}" min="0" max="119" aria-label="Age in years" form="member-form-{{ m.id }}"><span class="age-unit">yrs</span>
+            <span class="age-months" {% if m.age_years == '' or m.age_years >= 2 %}hidden{% endif %}>
+              <input type="number" name="age_months" value="{{ m.age_months }}" min="0" max="11" aria-label="Months" form="member-form-{{ m.id }}"><span class="age-unit">mo</span>
+            </span>
           </td>
           <td><input type="text" name="relationship" value="{{ m.relationship }}" form="member-form-{{ m.id }}"></td>
           <td>
@@ -231,6 +234,20 @@
     </form>
   </div>
 
+  <script>
+    // Months only matter for babies under 2, so the months box is hidden for
+    // everyone else and appears if the years box is edited down below 2.
+    document.querySelectorAll(".age-cell").forEach(function (cell) {
+      var years = cell.querySelector('input[name="age_years"]');
+      var wrap = cell.querySelector(".age-months");
+      var months = wrap.querySelector("input");
+      years.addEventListener("input", function () {
+        var show = years.value !== "" && Number(years.value) < 2;
+        wrap.hidden = !show;
+        if (!show) months.value = "";
+      });
+    });
+  </script>
   <script>
     (function () {
       var rel = document.getElementById("add-member-relationship");
