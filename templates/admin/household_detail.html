@@ -197,19 +197,32 @@
       <input type="text" name="first_name" required>
       <label>Last Name</label>
       <input type="text" name="last_name" required>
-      <label>Age</label>
-      <div class="age-input-row">
-        <div class="age-input-col">
-          <label class="hint">Years</label>
-          <input type="number" name="age_years" min="0" max="119">
-        </div>
-        <div class="age-input-col">
-          <label class="hint">Months (babies under 2)</label>
-          <input type="number" name="age_months" min="0" max="11">
-        </div>
+      <label for="add-member-relationship">Relationship to Primary Applicant</label>
+      <select id="add-member-relationship" name="relationship">
+        <option value="Spouse">Spouse</option>
+        <option value="Child">Child</option>
+        <option value="Parent">Parent</option>
+        <option value="Other">Other</option>
+      </select>
+
+      <div id="add-age-adult">
+        <label>Age</label>
+        <input type="number" id="add-age-single" name="age_single" min="0" max="119">
       </div>
-      <label>Relationship</label>
-      <input type="text" name="relationship" placeholder="e.g. Child">
+      <div id="add-age-child" hidden>
+        <label>Age</label>
+        <div class="age-input-row">
+          <div class="age-input-col">
+            <label class="hint">Years</label>
+            <input type="number" id="add-age-years" name="age_years" min="0" max="119">
+          </div>
+          <div class="age-input-col">
+            <label class="hint">Months</label>
+            <input type="number" id="add-age-months" name="age_months" min="0" max="11">
+          </div>
+        </div>
+        <p class="hint">Fill in Months for babies under 2 — exact age matters for diaper/formula needs.</p>
+      </div>
       <label class="checkbox-label">
         <input type="checkbox" name="id_verified" value="1">
         Government ID Checked
@@ -217,6 +230,23 @@
       <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Add Member</button>
     </form>
   </div>
+
+  <script>
+    (function () {
+      var rel = document.getElementById("add-member-relationship");
+      var adult = document.getElementById("add-age-adult");
+      var child = document.getElementById("add-age-child");
+      function sync() {
+        var isChild = rel.value === "Child";
+        adult.hidden = isChild;
+        child.hidden = !isChild;
+        var clear = isChild ? ["add-age-single"] : ["add-age-years", "add-age-months"];
+        clear.forEach(function (id) { document.getElementById(id).value = ""; });
+      }
+      rel.addEventListener("change", sync);
+      sync();
+    })();
+  </script>
 
   <button type="submit" form="household-info-form" class="btn btn-primary">Save Household Info</button>
 

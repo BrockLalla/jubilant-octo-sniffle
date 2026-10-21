@@ -664,13 +664,31 @@ def household_detail(household_id):
         elif action == "add_member":
             first_name = request.form.get("first_name", "").strip()
             last_name = request.form.get("last_name", "").strip()
+            relationship = request.form.get("relationship", "").strip() or "Other"
+            if relationship == "Child":
+                # Same rule as registration: a child's age is required, and
+                # blank months means exactly whole years (months matter for
+                # babies under 2, where they drive the diaper/formula cutoff).
+                years = request.form.get("age_years", "").strip()
+                months = request.form.get("age_months", "").strip()
+                age_missing = not years and not months
+                age_args = (years, months or "0")
+            else:
+                age_missing = False
+                age_args = (request.form.get("age_single", "").strip(), None)
             if first_name or last_name:
                 try:
-                    dob = db.dob_for_edited_age(
-                        None, request.form.get("age_years"), request.form.get("age_months")
-                    )
+                    if age_missing:
+                        raise ValueError("age required")
+                    dob = db.dob_for_edited_age(None, *age_args)
                 except ValueError:
-                    flash("That age wasn't valid — member not added.", "error")
+                    name = first_name or last_name
+                    flash(
+                        f"Please enter {name}'s age — required for a child."
+                        if age_missing
+                        else f"Please enter a valid age for {name}.",
+                        "error",
+                    )
                 else:
                     dup = db.find_duplicate_person(first_name, last_name, dob, exclude_household_id=household_id)
                     if dup and dup["confidence"] == "high":
@@ -692,7 +710,7 @@ def household_detail(household_id):
                             first_name,
                             last_name,
                             dob,
-                            request.form.get("relationship", "").strip() or "Other",
+                            relationship,
                             id_verified=bool(request.form.get("id_verified")),
                         )
                         flash("Member added.", "success")
