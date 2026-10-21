@@ -52,6 +52,18 @@ def create_app():
     db.init_db()
     offsite_backup.start_background_scheduler()
     app.jinja_env.globals["household_status"] = db.household_status
+
+    @app.url_defaults
+    def version_static_urls(endpoint, values):
+        # Appends ?v=<file's last-modified time> to every static URL, so a
+        # browser re-downloads style.css / register.js the moment a deploy
+        # changes them. Without this, a CSS fix can look "not fixed" for
+        # days -- browsers hold on to the old stylesheet until it expires.
+        if endpoint == "static" and "filename" in values:
+            try:
+                values["v"] = int(os.path.getmtime(os.path.join(app.static_folder, values["filename"])))
+            except OSError:
+                pass
     app.jinja_env.filters["commas"] = lambda v: "{:,}".format(v) if isinstance(v, (int, float)) else v
 
     from routes.public import bp as public_bp
