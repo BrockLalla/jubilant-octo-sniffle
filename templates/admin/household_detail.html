@@ -207,7 +207,7 @@
 
       <div id="add-age-adult">
         <label>Age</label>
-        <input type="number" id="add-age-single" name="age_single" min="0" max="119">
+        <input type="number" id="add-age-single" name="age_single" min="0" max="119" required>
       </div>
       <div id="add-age-child" hidden>
         <label>Age</label>
@@ -240,6 +240,7 @@
         var isChild = rel.value === "Child";
         adult.hidden = isChild;
         child.hidden = !isChild;
+        document.getElementById("add-age-single").required = !isChild;
         var clear = isChild ? ["add-age-single"] : ["add-age-years", "add-age-months"];
         clear.forEach(function (id) { document.getElementById(id).value = ""; });
       }

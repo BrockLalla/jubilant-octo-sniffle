@@ -666,16 +666,16 @@ def household_detail(household_id):
             last_name = request.form.get("last_name", "").strip()
             relationship = request.form.get("relationship", "").strip() or "Other"
             if relationship == "Child":
-                # Same rule as registration: a child's age is required, and
-                # blank months means exactly whole years (months matter for
+                # Blank months means exactly whole years (months matter for
                 # babies under 2, where they drive the diaper/formula cutoff).
                 years = request.form.get("age_years", "").strip()
                 months = request.form.get("age_months", "").strip()
                 age_missing = not years and not months
                 age_args = (years, months or "0")
             else:
-                age_missing = False
-                age_args = (request.form.get("age_single", "").strip(), None)
+                single = request.form.get("age_single", "").strip()
+                age_missing = not single
+                age_args = (single, None)
             if first_name or last_name:
                 try:
                     if age_missing:
@@ -684,7 +684,7 @@ def household_detail(household_id):
                 except ValueError:
                     name = first_name or last_name
                     flash(
-                        f"Please enter {name}'s age — required for a child."
+                        f"Please enter {name}'s age."
                         if age_missing
                         else f"Please enter a valid age for {name}.",
                         "error",

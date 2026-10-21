@@ -1194,17 +1194,17 @@ def clear_stale_supply_needs(household_id):
 
 
 def _recompute_supply_needs(conn, household_id):
-    """needs_diapers and needs_formula both auto-track whether the
-    household currently has any member under 2 -- cleared once the
-    youngest child ages past 2, and restored if a new child under 2 is
-    added, so neither can go stale after a membership edit. Called from
-    every place members change (add/update/delete below); must run on the
-    same connection as that change so it sees it before commit."""
-    has_young_child = _household_has_member_under_2(conn, household_id)
-    conn.execute(
-        "UPDATE households SET needs_diapers = ?, needs_formula = ? WHERE id = ?",
-        (1 if has_young_child else 0, 1 if has_young_child else 0, household_id),
-    )
+    """Cuts off needs_diapers/needs_formula once the household has no
+    member under 2 left (the youngest aged out, was removed, or had their
+    age corrected). It never turns them ON: like at registration, whether a
+    household gets diapers/formula is a staff choice they tick on the
+    household page, not something a member's age decides for them. Called
+    from every place members change (add/update/delete below); must run on
+    the same connection as that change so it sees it before commit."""
+    if not _household_has_member_under_2(conn, household_id):
+        conn.execute(
+            "UPDATE households SET needs_diapers = 0, needs_formula = 0 WHERE id = ?", (household_id,)
+        )
 
 
 def update_member(member_id, first_name, last_name, date_of_birth, relationship, id_verified=False):
