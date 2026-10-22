@@ -250,6 +250,10 @@ def init_db():
     _ensure_columns(conn, "households", {
         "address": "TEXT",
     })
+    _ensure_columns(conn, "households", {
+        "card_replacements": "INTEGER NOT NULL DEFAULT 0",
+        "card_last_replaced_at": "TEXT",
+    })
     # Backfill every household that already existed before this feature
     # shipped as "already done" -- most already have a real physical card,
     # just never tracked in the system, so a bare NULL here would
@@ -267,6 +271,11 @@ def init_db():
     # which deploy actually introduced the column.
     if not conn.execute("SELECT 1 FROM settings WHERE key = 'card_made_backfill_done'").fetchone():
         conn.execute("UPDATE households SET card_made_at = ? WHERE card_made_at IS NULL", (now_iso(),))
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES ('card_tracking_started', ?) "
+            "ON CONFLICT(key) DO NOTHING",
+            (datetime.date.today().isoformat(),),
+        )
         conn.execute(
             "INSERT INTO settings (key, value) VALUES ('card_made_backfill_done', '1') "
             "ON CONFLICT(key) DO UPDATE SET value = excluded.value"
@@ -1082,11 +1091,14 @@ def list_households_without_card(sort=None, direction="asc"):
 def list_recent_registrations(start_date=None, end_date=None):
     """Two modes, oldest first:
 
-    - No date filter (the normal, default view): every household that
-      still needs a card made, full stop -- regardless of how old the
-      registration is, so a straggler from a missed week never silently
-      falls out of view. Checking "Card Made" removes it from this view
-      immediately, since the point is a live to-do list, not a log.
+    - No date filter (the normal, default view): every household
+      registered since card tracking began that still needs a card made --
+      regardless of how old that registration is, so a straggler from a
+      missed week never silently falls out of view. Older households
+      with no card (tracked on the Households page instead) are left out,
+      or this weekly list would be buried under them. Checking "Card Made"
+      removes it from this view immediately, since the point is a live
+      to-do list, not a log.
     - An explicit date range: a plain lookback at everyone registered in
       that window, regardless of card status -- for reviewing a specific
       past week rather than working the current to-do list. created_at is
@@ -1111,6 +1123,10 @@ def list_recent_registrations(start_date=None, end_date=None):
             q += " WHERE " + " AND ".join(date_clauses)
         else:
             q += " WHERE h.card_made_at IS NULL"
+            tracking_start = get_setting("card_tracking_started")
+            if tracking_start:
+                q += " AND h.created_at >= ?"
+                params.append(tracking_start)
         q += " ORDER BY h.created_at ASC"
         rows = conn.execute(q, params).fetchall()
         result = []
@@ -1129,11 +1145,46 @@ def list_recent_registrations(start_date=None, end_date=None):
 
 
 def count_needing_cards():
-    """How many households still need a card -- powers the nav badge on
-    New Registrations (see routes/admin.py's context processor)."""
+    """How many newly registered households still need a card -- powers
+    the nav badge on New Registrations, so it matches that page's list."""
+    conn = get_db()
+    try:
+        q, params = "SELECT COUNT(*) FROM households WHERE card_made_at IS NULL", []
+        tracking_start = get_setting("card_tracking_started")
+        if tracking_start:
+            q += " AND created_at >= ?"
+            params.append(tracking_start)
+        return conn.execute(q, params).fetchone()[0]
+    finally:
+        conn.close()
+
+
+def count_households_without_card():
+    """Every household with no card, old or new -- the count behind the
+    Households page's "without a card" filter."""
     conn = get_db()
     try:
         return conn.execute("SELECT COUNT(*) FROM households WHERE card_made_at IS NULL").fetchone()[0]
+    finally:
+        conn.close()
+
+
+def issue_replacement_card(household_id):
+    """Records a replacement card (a lost one) for a household that has a
+    card: bumps the count and stamps the date, so staff can see how often
+    it's happened before handing out another. Returns the new count, or
+    None if the household has no card to replace."""
+    conn = get_db()
+    try:
+        cur = conn.execute(
+            "UPDATE households SET card_replacements = card_replacements + 1, card_last_replaced_at = ? "
+            "WHERE id = ? AND card_made_at IS NOT NULL",
+            (now_iso(), household_id),
+        )
+        conn.commit()
+        if cur.rowcount == 0:
+            return None
+        return conn.execute("SELECT card_replacements FROM households WHERE id = ?", (household_id,)).fetchone()[0]
     finally:
         conn.close()
 

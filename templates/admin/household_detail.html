@@ -97,6 +97,24 @@
   </div>
 
   <div class="card">
+    <h2>Card</h2>
+    {% if household.card_made_at %}
+      <p>
+        Replacement cards issued: <strong>{{ household.card_replacements or 0 }}</strong>
+        {% if household.card_last_replaced_at %}&middot; most recent {{ household.card_last_replaced_at[:10] }}{% endif %}
+      </p>
+      <p class="hint">For a lost card: record it here each time one is handed out, so it's clear how often it has happened.</p>
+      <form method="post" onsubmit="return confirm({% if household.card_replacements %}'This household has already had {{ household.card_replacements }} replacement card{{ '' if household.card_replacements == 1 else 's' }}. Issue another?'{% else %}'Record a replacement card for this household?'{% endif %});">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="issue_replacement_card">
+        <button type="submit" class="btn btn-secondary">🪪 Issue Replacement Card</button>
+      </form>
+    {% else %}
+      <p class="hint">No card made yet. Tick <strong>Card Made</strong> under Household Info and save once one has been handed out.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
     <h2>Authorized Pickup Designates ({{ designates|length }})</h2>
     <p class="hint">People other than a household member who are allowed to pick up on this household's behalf --
       a household can have any number of these.</p>

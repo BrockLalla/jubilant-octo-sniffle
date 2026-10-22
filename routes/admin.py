@@ -507,10 +507,7 @@ def households():
         "admin/households.html", rows=rows, query=query, sort=sort, direction=direction,
         incomplete_only=incomplete_only, no_card_only=no_card_only,
         incomplete_households_count=db.count_incomplete_households(),
-        # Same "card_made_at IS NULL" count that powers the New Registrations
-        # nav badge -- reused here since it's exactly the number this page's
-        # own "without a card" banner needs too.
-        households_without_card_count=db.count_needing_cards(),
+        households_without_card_count=db.count_households_without_card(),
     )
 
 
@@ -672,6 +669,17 @@ def household_detail(household_id):
                     _prompt_for_supply_boxes(
                         household_id, request.form.get("first_name", "").strip() or "This member"
                     )
+        elif action == "issue_replacement_card":
+            count = db.issue_replacement_card(household_id)
+            if count is None:
+                flash("This household has no card yet -- tick Card Made first.", "error")
+            else:
+                db.log_audit_event(
+                    session.get("admin_username"), "card_replacement_issued",
+                    detail=f"household {data['household']['household_code']}: replacement #{count}",
+                    ip_address=request.remote_addr,
+                )
+                flash(f"Replacement card recorded -- {count} so far for this household.", "success")
         elif action == "delete_member":
             db.delete_member(int(request.form.get("member_id")))
             flash("Member removed.", "success")
